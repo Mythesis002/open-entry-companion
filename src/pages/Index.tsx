@@ -57,7 +57,10 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-hidden relative">
+      {/* Global Mesh gradient background */}
+      {view === 'studio' && !isGenerating && <MeshBackground />}
+      
       <Header 
         view={view} 
         setView={setView} 
@@ -65,27 +68,30 @@ const Index = () => {
         setIsMenuOpen={setIsMenuOpen} 
       />
 
-      <main className="flex-1 pt-14 lg:pt-16 max-w-[1400px] mx-auto w-full relative">
-        {/* Mesh gradient background - only visible on studio view */}
-        {view === 'studio' && !isGenerating && <MeshBackground />}
-
+      <main className="flex-1 pt-14 lg:pt-16 max-w-[1400px] mx-auto w-full relative z-10">
         {view === 'studio' ? (
           <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up">
             {!isGenerating ? (
               <div className="w-full max-w-5xl flex flex-col items-center gap-12">
                 {/* Hero Text */}
-                <div className="text-center space-y-4 max-w-2xl relative">
+                <div className="text-center space-y-5 max-w-3xl relative">
+                  {/* Badge */}
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-100">
+                    <span className="text-cyan-600 text-sm">✦</span>
+                    <span className="text-sm font-semibold text-foreground/80">AI-Powered Video Ads</span>
+                  </div>
+                  
                   <h1 className="text-5xl lg:text-7xl font-extrabold font-display leading-[1] tracking-tighter text-foreground">
-                    AI Video<br/>Ads for Business
+                    OpenTry<br/>Ad Studio
                   </h1>
-                  <p className="text-sm lg:text-lg text-muted-foreground font-medium">
-                    Create free viral video commercials in seconds.
+                  <p className="text-base lg:text-lg text-muted-foreground font-medium max-w-xl mx-auto">
+                    Create stunning video ads in minutes. Upload your brand assets, describe your offer, and let AI craft professional commercials for local businesses.
                   </p>
                 </div>
 
                 {/* Business Type Selector */}
                 <div className="w-full">
-                  <BusinessTypeSelector 
+                  <BusinessTypeSelector
                     selected={inputs.businessType}
                     onSelect={(type: BusinessType) => setInputs(prev => ({ ...prev, businessType: type }))}
                   />
