@@ -1,34 +1,63 @@
 export function MeshBackground() {
   return (
     <div 
-      className="absolute inset-0 overflow-hidden -z-10 pointer-events-none select-none" 
+      className="fixed inset-0 overflow-hidden pointer-events-none select-none z-0" 
       aria-hidden="true"
     >
-      {/* Color Blob 1: Soft Cyan-Blue (Top Right) */}
+      {/* Main Cyan blob (Right side) */}
       <div 
-        className="mesh-blob -top-[10%] -right-[5%] w-[45%] h-[45%] bg-mesh-cyan/40"
+        className="absolute -top-[5%] right-0 w-[55%] h-[65%] rounded-full"
+        style={{ 
+          background: 'radial-gradient(ellipse at 60% 40%, hsl(192, 95%, 85%) 0%, hsl(198, 85%, 90%) 35%, transparent 65%)',
+          filter: 'blur(70px)',
+        }}
       />
 
-      {/* Color Blob 2: Warm Amber-Yellow (Center Top) */}
+      {/* Pink-Rose blob (Left side) */}
       <div 
-        className="mesh-blob top-[5%] left-[15%] w-[40%] h-[35%] bg-mesh-amber/40 opacity-70"
-        style={{ animationDelay: '1.5s' }}
+        className="absolute -top-[5%] -left-[5%] w-[50%] h-[55%] rounded-full"
+        style={{ 
+          background: 'radial-gradient(ellipse at 40% 40%, hsl(335, 85%, 90%) 0%, hsl(345, 75%, 93%) 35%, transparent 65%)',
+          filter: 'blur(70px)',
+        }}
       />
 
-      {/* Color Blob 3: Vibrant Pink-Purple (Middle Left) */}
+      {/* Lavender-Purple blob (Center-bottom) */}
       <div 
-        className="mesh-blob top-[25%] -left-[10%] w-[50%] h-[50%] bg-mesh-fuchsia/30 blur-[160px]"
-        style={{ animationDelay: '3s' }}
+        className="absolute top-[25%] left-[20%] w-[60%] h-[50%] rounded-full"
+        style={{ 
+          background: 'radial-gradient(ellipse at 50% 50%, hsl(265, 75%, 92%) 0%, hsl(275, 65%, 95%) 35%, transparent 65%)',
+          filter: 'blur(80px)',
+        }}
       />
 
-      {/* Color Blob 4: Soft Lavender-Indigo (Bottom Right) */}
+      {/* Warm yellow-cream accent (Top center) */}
       <div 
-        className="mesh-blob bottom-0 -right-[10%] w-[55%] h-[55%] bg-mesh-indigo/40 blur-[140px]"
-        style={{ animationDelay: '0.5s' }}
+        className="absolute top-[5%] left-[30%] w-[35%] h-[25%] rounded-full"
+        style={{ 
+          background: 'radial-gradient(ellipse at center, hsl(48, 100%, 92%) 0%, transparent 55%)',
+          filter: 'blur(50px)',
+          opacity: 0.8
+        }}
       />
 
-      {/* Sub-layer for extra blending depth */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-card/20 via-transparent to-card/30 backdrop-blur-[20px]" />
+      {/* Soft teal glow (Right edge) */}
+      <div 
+        className="absolute top-[35%] right-0 w-[20%] h-[30%] rounded-full"
+        style={{ 
+          background: 'radial-gradient(ellipse at center, hsl(175, 70%, 88%) 0%, transparent 55%)',
+          filter: 'blur(50px)',
+          opacity: 0.6
+        }}
+      />
+
+      {/* Light base overlay for consistency */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(180deg, transparent 0%, hsl(220, 20%, 98%) 80%)'
+        }}
+      />
     </div>
   );
 }
