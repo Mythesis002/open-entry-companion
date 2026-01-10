@@ -13,7 +13,17 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Sora', 'sans-serif'],
+      },
       colors: {
+        mesh: {
+          cyan: "hsl(var(--mesh-cyan))",
+          amber: "hsl(var(--mesh-amber))",
+          fuchsia: "hsl(var(--mesh-fuchsia))",
+          indigo: "hsl(var(--mesh-indigo))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
