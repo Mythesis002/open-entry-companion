@@ -9,6 +9,7 @@ import { AboutSection } from '@/components/AboutSection';
 import { FeaturesSection } from '@/components/FeaturesSection';
 import { FAQSection } from '@/components/FAQSection';
 import { Footer } from '@/components/Footer';
+import { SocialConnectionsPanel } from '@/components/SocialConnectionsPanel';
 import type { AdInputs, BusinessType } from '@/types';
 
 const Index = () => {
@@ -104,6 +105,9 @@ const Index = () => {
                   onGenerate={handleGenerate}
                   isValid={isFormValid}
                 />
+
+                {/* Social Connections Panel */}
+                <SocialConnectionsPanel />
               </div>
             ) : (
               <GeneratingState step={generationStep} />
