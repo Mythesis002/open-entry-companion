@@ -3,26 +3,20 @@ import { Header } from '@/components/Header';
 import { MeshBackground } from '@/components/MeshBackground';
 import { BusinessTypeSelector } from '@/components/BusinessTypeSelector';
 import { BrandDetailsForm } from '@/components/BrandDetailsForm';
+import { GeneratingState } from '@/components/GeneratingState';
 import { RecentAdsCarousel } from '@/components/RecentAdsCarousel';
 import { AboutSection } from '@/components/AboutSection';
 import { FeaturesSection } from '@/components/FeaturesSection';
 import { FAQSection } from '@/components/FAQSection';
 import { Footer } from '@/components/Footer';
 import { SocialConnectionsPanel } from '@/components/SocialConnectionsPanel';
-import { CreativeBriefingPanel } from '@/components/CreativeBriefingPanel';
-import { ProductionProgress } from '@/components/ProductionProgress';
-import { ProductionComplete } from '@/components/ProductionComplete';
-import { useAdProduction } from '@/hooks/useAdProduction';
 import type { AdInputs, BusinessType } from '@/types';
-import type { BrandArchetype, TargetEmotion } from '@/types/adProduction';
 
 const Index = () => {
   const [view, setView] = useState<'studio' | 'social'>('studio');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  // Creative briefing state
-  const [archetype, setArchetype] = useState<BrandArchetype>('magician');
-  const [emotion, setEmotion] = useState<TargetEmotion>('awe');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState("");
   
   const [inputs, setInputs] = useState<AdInputs>({
     businessType: 'product',
@@ -36,13 +30,31 @@ const Index = () => {
     objective: 'awareness'
   });
 
-  const { state: productionState, startProduction, reset, isProducing } = useAdProduction();
-
   const isFormValid = inputs.productName.length > 0 && inputs.productImages.length > 0;
 
   const handleGenerate = async () => {
     if (!isFormValid) return;
-    await startProduction(inputs, archetype, emotion);
+    
+    setIsGenerating(true);
+    
+    // Simulate generation process
+    const steps = [
+      "Analyzing Brand",
+      "Writing Script", 
+      "Recording Voice",
+      "Painting Scene 1",
+      "Painting Scene 2",
+      "Painting Scene 3",
+      "Rendering Video"
+    ];
+    
+    for (const step of steps) {
+      setGenerationStep(step);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    
+    setIsGenerating(false);
+    setGenerationStep("");
   };
 
   return (
