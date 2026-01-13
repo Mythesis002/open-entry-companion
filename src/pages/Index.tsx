@@ -4,10 +4,14 @@ import { MeshBackground } from '@/components/MeshBackground';
 import { BusinessTypeSelector } from '@/components/BusinessTypeSelector';
 import { BrandDetailsForm } from '@/components/BrandDetailsForm';
 import { GeneratingState } from '@/components/GeneratingState';
-import { RecentAdsCarousel } from '@/components/RecentAdsCarousel';
+import { VideoCarousel } from '@/components/VideoCarousel';
+import { HowItWorksSection } from '@/components/HowItWorksSection';
 import { AboutSection } from '@/components/AboutSection';
 import { FeaturesSection } from '@/components/FeaturesSection';
+import { TestimonialsSection } from '@/components/TestimonialsSection';
+import { PricingSection } from '@/components/PricingSection';
 import { FAQSection } from '@/components/FAQSection';
+import { CTASection } from '@/components/CTASection';
 import { Footer } from '@/components/Footer';
 import { SocialConnectionsPanel } from '@/components/SocialConnectionsPanel';
 import type { AdInputs, BusinessType } from '@/types';
@@ -37,7 +41,6 @@ const Index = () => {
     
     setIsGenerating(true);
     
-    // Simulate generation process
     const steps = [
       "Analyzing Brand",
       "Writing Script", 
@@ -69,9 +72,9 @@ const Index = () => {
         setIsMenuOpen={setIsMenuOpen} 
       />
 
-      <main className="flex-1 pt-14 lg:pt-16 max-w-[1400px] mx-auto w-full relative z-10">
+      <main className="flex-1 pt-14 lg:pt-16 w-full relative z-10">
         {view === 'studio' ? (
-          <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up">
+          <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up max-w-[1400px] mx-auto">
             {!isGenerating ? (
               <div className="w-full max-w-5xl flex flex-col items-center gap-12">
                 {/* Hero Text */}
@@ -127,8 +130,11 @@ const Index = () => {
           </div>
         )}
 
-        {/* Recent Ads Carousel */}
-        <RecentAdsCarousel />
+        {/* Video Carousel - Vertical videos with click-to-play */}
+        <VideoCarousel />
+
+        {/* How It Works */}
+        <HowItWorksSection />
 
         {/* About Section */}
         <AboutSection />
@@ -136,8 +142,17 @@ const Index = () => {
         {/* Features Section */}
         <FeaturesSection />
 
+        {/* Testimonials */}
+        <TestimonialsSection />
+
+        {/* Pricing Section */}
+        <PricingSection />
+
         {/* FAQ Section */}
         <FAQSection />
+
+        {/* Final CTA */}
+        <CTASection />
       </main>
 
       {/* Footer */}
