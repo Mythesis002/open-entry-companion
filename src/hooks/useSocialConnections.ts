@@ -29,15 +29,6 @@ export function useSocialConnections() {
 
   const fetchConnections = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('get-connections', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: null,
-      });
-
-      // Use query params approach instead
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-connections?session_id=${sessionId}`,
         {
