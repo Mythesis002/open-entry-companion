@@ -1,1 +1,22 @@
 project_id = "rfbkpgimteivjlpxlikx"
+
+[functions.create-razorpay-order]
+verify_jwt = false
+
+[functions.verify-razorpay-payment]
+verify_jwt = false
+
+[functions.disconnect-social]
+verify_jwt = false
+
+[functions.get-connections]
+verify_jwt = false
+
+[functions.instagram-auth]
+verify_jwt = false
+
+[functions.post-to-social]
+verify_jwt = false
+
+[functions.youtube-auth]
+verify_jwt = false
