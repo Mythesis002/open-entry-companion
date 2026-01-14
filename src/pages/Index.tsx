@@ -14,6 +14,11 @@ import { FAQSection } from '@/components/FAQSection';
 import { CTASection } from '@/components/CTASection';
 import { Footer } from '@/components/Footer';
 import { SocialConnectionsPanel } from '@/components/SocialConnectionsPanel';
+import { RegistrationModal } from '@/components/RegistrationModal';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserCredits } from '@/hooks/useUserCredits';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import type { AdInputs, BusinessType } from '@/types';
 
 const Index = () => {
@@ -21,6 +26,11 @@ const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState("");
+  const [showRegistration, setShowRegistration] = useState(false);
+  
+  const { user } = useAuth();
+  const { isRegistered, isTrialActive, getDaysRemaining, refetch } = useUserCredits();
+  const { toast } = useToast();
   
   const [inputs, setInputs] = useState<AdInputs>({
     businessType: 'product',
@@ -39,6 +49,108 @@ const Index = () => {
   const handleGenerate = async () => {
     if (!isFormValid) return;
     
+    // Check if user needs to register
+    if (!user || !isRegistered()) {
+      setShowRegistration(true);
+      return;
+    }
+
+    // Check if trial is active or payment is needed
+    if (!isTrialActive()) {
+      // Need to process payment via Razorpay
+      await handlePaymentRequired();
+      return;
+    }
+    
+    // Trial active - proceed with generation
+    await proceedWithGeneration();
+  };
+
+  const handlePaymentRequired = async () => {
+    try {
+      // Create transaction record
+      const { data: transaction, error: txError } = await supabase
+        .from('ad_transactions')
+        .insert({
+          user_id: user!.id,
+          amount: 29,
+          status: 'pending',
+          ad_inputs: inputs as any
+        })
+        .select()
+        .single();
+
+      if (txError) throw txError;
+
+      // Create Razorpay order
+      const { data: session } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke('create-razorpay-order', {
+        body: {
+          amount: 29,
+          transaction_id: transaction.id
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      const orderData = response.data;
+
+      // Load Razorpay checkout
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'OpenTry Ad Studio',
+        description: 'Video Ad Generation - ₹29',
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          // Verify payment
+          const verifyResponse = await supabase.functions.invoke('verify-razorpay-payment', {
+            body: {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              transaction_id: transaction.id
+            }
+          });
+
+          if (verifyResponse.error) {
+            toast({
+              variant: "destructive",
+              title: "Payment Failed",
+              description: "Could not verify payment"
+            });
+            return;
+          }
+
+          toast({
+            title: "Payment Successful!",
+            description: "Starting ad generation..."
+          });
+
+          await proceedWithGeneration();
+        },
+        prefill: {
+          email: user?.email
+        },
+        theme: {
+          color: '#6366f1'
+        }
+      };
+
+      // @ts-ignore - Razorpay types
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  };
+
+  const proceedWithGeneration = async () => {
     setIsGenerating(true);
     
     const steps = [
@@ -58,6 +170,25 @@ const Index = () => {
     
     setIsGenerating(false);
     setGenerationStep("");
+
+    // Record transaction for trial period
+    if (user && isTrialActive()) {
+      await supabase.from('ad_transactions').insert({
+        user_id: user.id,
+        amount: 29,
+        status: 'pending',
+        ad_inputs: inputs as any
+      });
+    }
+  };
+
+  const handleRegistrationComplete = () => {
+    setShowRegistration(false);
+    refetch();
+    toast({
+      title: "Welcome!",
+      description: `You have ${getDaysRemaining()} days of pay-later period.`
+    });
   };
 
   return (
@@ -157,6 +288,13 @@ const Index = () => {
 
       {/* Footer */}
       <Footer setView={setView} />
+
+      {/* Registration Modal */}
+      <RegistrationModal 
+        isOpen={showRegistration}
+        onClose={() => setShowRegistration(false)}
+        onComplete={handleRegistrationComplete}
+      />
     </div>
   );
 };

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_transactions: {
+        Row: {
+          ad_inputs: Json | null
+          amount: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          ad_inputs?: Json | null
+          amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          ad_inputs?: Json | null
+          amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       social_connections: {
         Row: {
           access_token: string
@@ -56,6 +92,36 @@ export type Database = {
           session_id?: string
           token_type?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          trial_ends_at: string
+          updated_at: string
+          upi_verified: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          trial_ends_at: string
+          updated_at?: string
+          upi_verified?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          trial_ends_at?: string
+          updated_at?: string
+          upi_verified?: boolean
+          user_id?: string
         }
         Relationships: []
       }
