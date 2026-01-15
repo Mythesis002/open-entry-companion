@@ -1,89 +1,258 @@
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { MeshBackground } from '@/components/MeshBackground';
-import { BusinessTypeSelector } from '@/components/BusinessTypeSelector';
-import { BrandDetailsForm } from '@/components/BrandDetailsForm';
-import { GeneratingState } from '@/components/GeneratingState';
-import { VideoCarousel } from '@/components/VideoCarousel';
+import { TemplateCard } from '@/components/TemplateCard';
+import { ReferenceImageUpload } from '@/components/ReferenceImageUpload';
+import { ImageReviewGrid } from '@/components/ImageReviewGrid';
+import { VideoComposing } from '@/components/VideoComposing';
 import { HowItWorksSection } from '@/components/HowItWorksSection';
-import { AboutSection } from '@/components/AboutSection';
-import { FeaturesSection } from '@/components/FeaturesSection';
-import { TestimonialsSection } from '@/components/TestimonialsSection';
-import { PricingSection } from '@/components/PricingSection';
 import { FAQSection } from '@/components/FAQSection';
 import { CTASection } from '@/components/CTASection';
 import { Footer } from '@/components/Footer';
-import { SocialConnectionsPanel } from '@/components/SocialConnectionsPanel';
 import { RegistrationModal } from '@/components/RegistrationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { AdInputs, BusinessType } from '@/types';
+import { REEL_TEMPLATES, getTemplateById } from '@/data/templates';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { ReelTemplate, GeneratedImage, ReelProject } from '@/types';
 
 const Index = () => {
-  const [view, setView] = useState<'studio' | 'social'>('studio');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStep, setGenerationStep] = useState("");
   const [showRegistration, setShowRegistration] = useState(false);
   
   const { user } = useAuth();
   const { isRegistered, isTrialActive, getDaysRemaining, refetch } = useUserCredits();
   const { toast } = useToast();
   
-  const [inputs, setInputs] = useState<AdInputs>({
-    businessType: 'product',
-    brandName: '',
-    productName: '',
-    description: '',
-    brandLogo: null,
-    productImages: [],
-    mood: 'cinematic',
-    audience: 'general',
-    objective: 'awareness'
+  // Reel creation state
+  const [selectedTemplate, setSelectedTemplate] = useState<ReelTemplate | null>(null);
+  const [project, setProject] = useState<ReelProject>({
+    templateId: '',
+    referenceImages: [],
+    generatedImages: [],
+    generatedVideos: [],
+    finalVideoUrl: null,
+    status: 'images'
   });
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [regeneratingImageId, setRegeneratingImageId] = useState<string | null>(null);
+  const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
 
-  const isFormValid = inputs.productName.length > 0 && inputs.productImages.length > 0;
-
-  const handleGenerate = async () => {
-    if (!isFormValid) return;
-    
+  const handleSelectTemplate = (template: ReelTemplate) => {
     // Check if user needs to register
     if (!user || !isRegistered()) {
       setShowRegistration(true);
       return;
     }
+    
+    setSelectedTemplate(template);
+    setProject({
+      templateId: template.id,
+      referenceImages: [],
+      generatedImages: [],
+      generatedVideos: [],
+      finalVideoUrl: null,
+      status: 'images'
+    });
+  };
 
-    // Check if trial is active or payment is needed
+  const handleGenerateImages = async () => {
+    if (!selectedTemplate || project.referenceImages.length < selectedTemplate.referenceImagesRequired) return;
+    
+    // Check trial/payment
     if (!isTrialActive()) {
-      // Need to process payment via Razorpay
       await handlePaymentRequired();
       return;
     }
+
+    setIsGeneratingImages(true);
     
-    // Trial active - proceed with generation
-    await proceedWithGeneration();
+    // Initialize images as generating
+    const initialImages: GeneratedImage[] = selectedTemplate.prompts.map((prompt, i) => ({
+      id: `img-${i}`,
+      prompt,
+      imageUrl: '',
+      status: 'generating' as const
+    }));
+    setProject(prev => ({ ...prev, generatedImages: initialImages, status: 'review' }));
+
+    // Generate each image
+    for (let i = 0; i < selectedTemplate.prompts.length; i++) {
+      try {
+        const response = await supabase.functions.invoke('generate-image', {
+          body: {
+            prompt: selectedTemplate.prompts[i],
+            referenceImages: project.referenceImages
+          }
+        });
+
+        if (response.error) throw response.error;
+
+        setProject(prev => ({
+          ...prev,
+          generatedImages: prev.generatedImages.map((img, idx) =>
+            idx === i ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+          )
+        }));
+      } catch (error: unknown) {
+        console.error(`Error generating image ${i}:`, error);
+        const message = error instanceof Error ? error.message : 'Generation failed';
+        toast({
+          variant: 'destructive',
+          title: 'Generation Error',
+          description: message
+        });
+        setProject(prev => ({
+          ...prev,
+          generatedImages: prev.generatedImages.map((img, idx) =>
+            idx === i ? { ...img, status: 'error' as const } : img
+          )
+        }));
+      }
+    }
+
+    setIsGeneratingImages(false);
+  };
+
+  const handleRegenerateImage = async (imageId: string) => {
+    if (!selectedTemplate) return;
+    
+    const imageIndex = project.generatedImages.findIndex(img => img.id === imageId);
+    if (imageIndex === -1) return;
+
+    setRegeneratingImageId(imageId);
+
+    try {
+      const response = await supabase.functions.invoke('generate-image', {
+        body: {
+          prompt: selectedTemplate.prompts[imageIndex],
+          referenceImages: project.referenceImages
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      setProject(prev => ({
+        ...prev,
+        generatedImages: prev.generatedImages.map(img =>
+          img.id === imageId ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+        )
+      }));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Regeneration failed';
+      toast({
+        variant: 'destructive',
+        title: 'Regeneration Error',
+        description: message
+      });
+    }
+
+    setRegeneratingImageId(null);
+  };
+
+  const handleGenerateVideos = async () => {
+    if (!selectedTemplate) return;
+
+    setIsGeneratingVideos(true);
+    setProject(prev => ({ ...prev, status: 'videos' }));
+
+    const videoUrls: string[] = [];
+
+    // Generate video for each image
+    for (let i = 0; i < project.generatedImages.length; i++) {
+      try {
+        const response = await supabase.functions.invoke('generate-video', {
+          body: {
+            imageUrl: project.generatedImages[i].imageUrl,
+            prompt: selectedTemplate.videoPrompts[i]
+          }
+        });
+
+        if (response.error) throw response.error;
+        videoUrls.push(response.data.videoUrl);
+      } catch (error: unknown) {
+        console.error(`Error generating video ${i}:`, error);
+        // Use image as fallback
+        videoUrls.push(project.generatedImages[i].imageUrl);
+      }
+    }
+
+    setProject(prev => ({
+      ...prev,
+      generatedVideos: videoUrls.map((url, i) => ({
+        id: `vid-${i}`,
+        sourceImageUrl: project.generatedImages[i].imageUrl,
+        videoUrl: url,
+        status: 'complete' as const
+      })),
+      status: 'composing'
+    }));
+
+    setIsGeneratingVideos(false);
+
+    // Compose final reel
+    await composeReel(videoUrls);
+  };
+
+  const composeReel = async (videoUrls: string[]) => {
+    if (!selectedTemplate) return;
+
+    try {
+      const response = await supabase.functions.invoke('compose-reel', {
+        body: {
+          videoUrls,
+          templateId: selectedTemplate.creatomateTemplateId
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      setProject(prev => ({
+        ...prev,
+        finalVideoUrl: response.data.videoUrl,
+        status: 'complete'
+      }));
+
+      // Record transaction
+      if (user) {
+        await supabase.from('ad_transactions').insert({
+          user_id: user.id,
+          amount: 29,
+          status: isTrialActive() ? 'pending' : 'paid'
+        });
+      }
+
+      toast({
+        title: '🎉 Reel Created!',
+        description: 'Your viral video is ready to download'
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Composition failed';
+      toast({
+        variant: 'destructive',
+        title: 'Composition Error',
+        description: message
+      });
+    }
   };
 
   const handlePaymentRequired = async () => {
     try {
-      // Create transaction record
       const { data: transaction, error: txError } = await supabase
         .from('ad_transactions')
         .insert({
           user_id: user!.id,
           amount: 29,
-          status: 'pending',
-          ad_inputs: inputs as any
+          status: 'pending'
         })
         .select()
         .single();
 
       if (txError) throw txError;
 
-      // Create Razorpay order
-      const { data: session } = await supabase.auth.getSession();
       const response = await supabase.functions.invoke('create-razorpay-order', {
         body: {
           amount: 29,
@@ -95,16 +264,14 @@ const Index = () => {
 
       const orderData = response.data;
 
-      // Load Razorpay checkout
       const options = {
         key: orderData.key_id,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'OpenTry Ad Studio',
-        description: 'Video Ad Generation - ₹29',
+        name: 'Reel Studio',
+        description: 'AI Reel Generation - ₹29',
         order_id: orderData.order_id,
-        handler: async function (response: any) {
-          // Verify payment
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           const verifyResponse = await supabase.functions.invoke('verify-razorpay-payment', {
             body: {
               razorpay_order_id: response.razorpay_order_id,
@@ -115,181 +282,154 @@ const Index = () => {
           });
 
           if (verifyResponse.error) {
-            toast({
-              variant: "destructive",
-              title: "Payment Failed",
-              description: "Could not verify payment"
-            });
+            toast({ variant: 'destructive', title: 'Payment Failed' });
             return;
           }
 
-          toast({
-            title: "Payment Successful!",
-            description: "Starting ad generation..."
-          });
-
-          await proceedWithGeneration();
+          toast({ title: 'Payment Successful!', description: 'Starting generation...' });
+          await handleGenerateImages();
         },
-        prefill: {
-          email: user?.email
-        },
-        theme: {
-          color: '#6366f1'
-        }
+        prefill: { email: user?.email },
+        theme: { color: '#ec4899' }
       };
 
-      // @ts-ignore - Razorpay types
+      // @ts-ignore
       const razorpay = new window.Razorpay(options);
       razorpay.open();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Payment error';
+      toast({ variant: 'destructive', title: 'Error', description: message });
     }
   };
 
-  const proceedWithGeneration = async () => {
-    setIsGenerating(true);
-    
-    const steps = [
-      "Analyzing Brand",
-      "Writing Script", 
-      "Recording Voice",
-      "Painting Scene 1",
-      "Painting Scene 2",
-      "Painting Scene 3",
-      "Rendering Video"
-    ];
-    
-    for (const step of steps) {
-      setGenerationStep(step);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
-    
-    setIsGenerating(false);
-    setGenerationStep("");
-
-    // Record transaction for trial period
-    if (user && isTrialActive()) {
-      await supabase.from('ad_transactions').insert({
-        user_id: user.id,
-        amount: 29,
-        status: 'pending',
-        ad_inputs: inputs as any
-      });
-    }
+  const handleStartOver = () => {
+    setSelectedTemplate(null);
+    setProject({
+      templateId: '',
+      referenceImages: [],
+      generatedImages: [],
+      generatedVideos: [],
+      finalVideoUrl: null,
+      status: 'images'
+    });
   };
 
   const handleRegistrationComplete = () => {
     setShowRegistration(false);
     refetch();
     toast({
-      title: "Welcome!",
+      title: 'Welcome!',
       description: `You have ${getDaysRemaining()} days of pay-later period.`
     });
   };
 
+  const renderContent = () => {
+    // Template selection
+    if (!selectedTemplate) {
+      return (
+        <div className="w-full max-w-5xl mx-auto space-y-12">
+          {/* Hero */}
+          <div className="text-center space-y-5 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-pink-50 to-orange-50 border border-pink-100">
+              <span className="text-pink-500 text-sm">🔥</span>
+              <span className="text-sm font-semibold text-foreground/80">AI-Powered Viral Reels</span>
+            </div>
+            
+            <h1 className="text-5xl lg:text-7xl font-extrabold font-display leading-[1] tracking-tighter text-foreground">
+              Reel<br/>Studio
+            </h1>
+            <p className="text-base lg:text-lg text-muted-foreground font-medium max-w-xl mx-auto">
+              Create trending AI-generated reels in minutes. Pick a viral template, upload your photos, and let AI do the magic.
+            </p>
+          </div>
+
+          {/* Template grid */}
+          <div>
+            <h2 className="text-xl font-bold mb-6">🎬 Trending Templates</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {REEL_TEMPLATES.map(template => (
+                <TemplateCard 
+                  key={template.id} 
+                  template={template} 
+                  onSelect={handleSelectTemplate}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Image upload stage
+    if (project.status === 'images') {
+      return (
+        <div className="w-full">
+          <Button
+            variant="ghost"
+            onClick={handleStartOver}
+            className="mb-6 gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Templates
+          </Button>
+          
+          <ReferenceImageUpload
+            template={selectedTemplate}
+            images={project.referenceImages}
+            onImagesChange={(images) => setProject(prev => ({ ...prev, referenceImages: images }))}
+            onGenerate={handleGenerateImages}
+            isGenerating={isGeneratingImages}
+          />
+        </div>
+      );
+    }
+
+    // Image review stage
+    if (project.status === 'review') {
+      return (
+        <ImageReviewGrid
+          images={project.generatedImages}
+          onRegenerate={handleRegenerateImage}
+          onGenerateVideos={handleGenerateVideos}
+          regeneratingId={regeneratingImageId}
+          isGeneratingVideos={isGeneratingVideos}
+        />
+      );
+    }
+
+    // Video generation / composing / complete
+    return (
+      <VideoComposing
+        status={project.status as 'composing' | 'complete'}
+        finalVideoUrl={project.finalVideoUrl}
+        onStartOver={handleStartOver}
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-hidden relative">
-      {/* Global Mesh gradient background */}
-      {view === 'studio' && !isGenerating && <MeshBackground />}
+      <MeshBackground />
       
       <Header 
-        view={view} 
-        setView={setView} 
+        view="studio"
+        setView={() => {}}
         isMenuOpen={isMenuOpen} 
         setIsMenuOpen={setIsMenuOpen} 
       />
 
       <main className="flex-1 pt-14 lg:pt-16 w-full relative z-10">
-        {view === 'studio' ? (
-          <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up max-w-[1400px] mx-auto">
-            {!isGenerating ? (
-              <div className="w-full max-w-5xl flex flex-col items-center gap-12">
-                {/* Hero Text */}
-                <div className="text-center space-y-5 max-w-3xl relative">
-                  {/* Badge */}
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-100">
-                    <span className="text-cyan-600 text-sm">✦</span>
-                    <span className="text-sm font-semibold text-foreground/80">AI-Powered Video Ads</span>
-                  </div>
-                  
-                  <h1 className="text-5xl lg:text-7xl font-extrabold font-display leading-[1] tracking-tighter text-foreground">
-                    OpenTry<br/>Ad Studio
-                  </h1>
-                  <p className="text-base lg:text-lg text-muted-foreground font-medium max-w-xl mx-auto">
-                    Create stunning video ads in minutes. Upload your brand assets, describe your offer, and let AI craft professional commercials for local businesses.
-                  </p>
-                </div>
+        <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up max-w-[1400px] mx-auto">
+          {renderContent()}
+        </div>
 
-                {/* Business Type Selector */}
-                <div className="w-full">
-                  <BusinessTypeSelector
-                    selected={inputs.businessType}
-                    onSelect={(type: BusinessType) => setInputs(prev => ({ ...prev, businessType: type }))}
-                  />
-                </div>
-
-                {/* Brand Details Form */}
-                <BrandDetailsForm 
-                  inputs={inputs}
-                  setInputs={setInputs}
-                  onGenerate={handleGenerate}
-                  isValid={isFormValid}
-                />
-
-                {/* Social Connections Panel */}
-                <SocialConnectionsPanel />
-              </div>
-            ) : (
-              <GeneratingState step={generationStep} />
-            )}
-          </div>
-        ) : (
-          <div className="container mx-auto px-6 py-20 text-center">
-            <h2 className="text-2xl font-extrabold font-display">
-              Automation Hub coming soon.
-            </h2>
-            <button 
-              onClick={() => setView('studio')} 
-              className="mt-6 h-12 px-8 bg-primary text-primary-foreground rounded-xl font-bold"
-            >
-              Back to Studio
-            </button>
-          </div>
-        )}
-
-        {/* Video Carousel - Vertical videos with click-to-play */}
-        <VideoCarousel />
-
-        {/* How It Works */}
         <HowItWorksSection />
-
-        {/* About Section */}
-        <AboutSection />
-
-        {/* Features Section */}
-        <FeaturesSection />
-
-        {/* Testimonials */}
-        <TestimonialsSection />
-
-        {/* Pricing Section */}
-        <PricingSection />
-
-        {/* FAQ Section */}
         <FAQSection />
-
-        {/* Final CTA */}
         <CTASection />
       </main>
 
-      {/* Footer */}
-      <Footer setView={setView} />
+      <Footer setView={() => {}} />
 
-      {/* Registration Modal */}
       <RegistrationModal 
         isOpen={showRegistration}
         onClose={() => setShowRegistration(false)}

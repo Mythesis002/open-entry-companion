@@ -1,3 +1,41 @@
+// Template types
+export interface ReelTemplate {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  shots: number;
+  referenceImagesRequired: number;
+  prompts: string[];
+  videoPrompts: string[];
+  creatomateTemplateId: string;
+}
+
+// Generated content
+export interface GeneratedImage {
+  id: string;
+  prompt: string;
+  imageUrl: string;
+  status: 'generating' | 'complete' | 'error';
+}
+
+export interface GeneratedVideo {
+  id: string;
+  sourceImageUrl: string;
+  videoUrl: string;
+  status: 'generating' | 'complete' | 'error';
+}
+
+export interface ReelProject {
+  templateId: string;
+  referenceImages: string[];
+  generatedImages: GeneratedImage[];
+  generatedVideos: GeneratedVideo[];
+  finalVideoUrl: string | null;
+  status: 'images' | 'review' | 'videos' | 'composing' | 'complete';
+}
+
+// Legacy types (keeping for compatibility)
 export type BusinessType =
   | 'product'
   | 'food'
