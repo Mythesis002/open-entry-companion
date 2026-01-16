@@ -18,7 +18,8 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
       "Dynamic glass break, water rushing in, fast swimming motion, urgent movement",
       "Upward swimming motion, light rays dancing, peaceful ascent, triumphant reach to surface"
     ],
-    creatomateTemplateId: '70f6563a-d3ce-47f5-90a0-34d40663881e'
+    creatomateTemplateId: '70f6563a-d3ce-47f5-90a0-34d40663881e',
+    price: 20
   }
 ];
 

@@ -2,7 +2,7 @@ import { Download, Share2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface VideoComposingProps {
-  status: 'composing' | 'complete';
+  status: 'videos' | 'composing' | 'complete';
   finalVideoUrl: string | null;
   onStartOver: () => void;
 }
@@ -12,7 +12,7 @@ export const VideoComposing = ({
   finalVideoUrl,
   onStartOver
 }: VideoComposingProps) => {
-  if (status === 'composing') {
+  if (status === 'videos' || status === 'composing') {
     return (
       <div className="w-full max-w-md mx-auto text-center space-y-8 py-16">
         {/* Loading animation */}
@@ -20,14 +20,18 @@ export const VideoComposing = ({
           <div className="absolute inset-0 rounded-full border-4 border-t-pink-500 border-r-purple-500 border-b-blue-500 border-l-transparent animate-spin" />
           <div className="absolute inset-4 rounded-full border-4 border-t-transparent border-r-pink-500 border-b-purple-500 border-l-blue-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-3xl">🎬</span>
+            <span className="text-3xl">{status === 'videos' ? '🎥' : '🎬'}</span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <h2 className="text-2xl font-bold font-display">Composing Your Reel</h2>
+          <h2 className="text-2xl font-bold font-display">
+            {status === 'videos' ? 'Creating Videos' : 'Composing Your Reel'}
+          </h2>
           <p className="text-muted-foreground">
-            Stitching videos together with effects and transitions...
+            {status === 'videos' 
+              ? 'Animating your images into video clips...' 
+              : 'Stitching videos together with effects and transitions...'}
           </p>
         </div>
 
@@ -38,12 +42,30 @@ export const VideoComposing = ({
             <span className="text-muted-foreground">Images generated</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-green-500">✓</span>
-            <span className="text-muted-foreground">Videos created</span>
+            {status === 'videos' ? (
+              <>
+                <span className="animate-pulse">⏳</span>
+                <span>Creating video clips</span>
+              </>
+            ) : (
+              <>
+                <span className="text-green-500">✓</span>
+                <span className="text-muted-foreground">Videos created</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="animate-pulse">⏳</span>
-            <span>Adding transitions & effects</span>
+            {status === 'composing' ? (
+              <>
+                <span className="animate-pulse">⏳</span>
+                <span>Adding transitions & effects</span>
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">○</span>
+                <span className="text-muted-foreground">Adding transitions & effects</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span>○</span>
