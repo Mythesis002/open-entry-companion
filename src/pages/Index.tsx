@@ -82,12 +82,12 @@ const Index = () => {
     }));
     setGeneratedImages(initialImages);
 
-    // Generate each image
-    for (let i = 0; i < selectedTemplate.prompts.length; i++) {
+    // Generate all images in parallel
+    const imagePromises = selectedTemplate.prompts.map(async (prompt, i) => {
       try {
         const response = await supabase.functions.invoke('generate-image', {
           body: {
-            prompt: selectedTemplate.prompts[i],
+            prompt,
             referenceImages: referenceImages
           }
         });
@@ -97,19 +97,26 @@ const Index = () => {
         setGeneratedImages(prev => prev.map((img, idx) =>
           idx === i ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
         ));
+        
+        return { success: true, index: i };
       } catch (error: unknown) {
         console.error(`Error generating image ${i}:`, error);
         const message = error instanceof Error ? error.message : 'Generation failed';
         toast({
           variant: 'destructive',
-          title: 'Generation Error',
+          title: `Image ${i + 1} Error`,
           description: message
         });
         setGeneratedImages(prev => prev.map((img, idx) =>
           idx === i ? { ...img, status: 'error' as const } : img
         ));
+        
+        return { success: false, index: i };
       }
-    }
+    });
+
+    // Wait for all images to complete
+    await Promise.all(imagePromises);
 
     // Move to review stage
     setAppStatus('review');
@@ -153,26 +160,27 @@ const Index = () => {
 
     setAppStatus('videos');
 
-    const videoUrls: string[] = [];
-
-    // Generate video for each image
-    for (let i = 0; i < generatedImages.length; i++) {
+    // Generate all videos in parallel
+    const videoPromises = generatedImages.map(async (img, i) => {
       try {
         const response = await supabase.functions.invoke('generate-video', {
           body: {
-            imageUrl: generatedImages[i].imageUrl,
-            prompt: selectedTemplate.videoPrompts[i]
+            imageUrl: img.imageUrl,
+            prompt: selectedTemplate.videoPrompts[i] || selectedTemplate.videoPrompts[0]
           }
         });
 
         if (response.error) throw response.error;
-        videoUrls.push(response.data.videoUrl);
+        return response.data.videoUrl;
       } catch (error: unknown) {
         console.error(`Error generating video ${i}:`, error);
         // Use image as fallback
-        videoUrls.push(generatedImages[i].imageUrl);
+        return img.imageUrl;
       }
-    }
+    });
+
+    // Wait for all videos to complete in parallel
+    const videoUrls = await Promise.all(videoPromises);
 
     setGeneratedVideos(videoUrls);
     setAppStatus('composing');
