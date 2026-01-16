@@ -1,4 +1,4 @@
-import { Play, Image } from 'lucide-react';
+import { Play, Image, IndianRupee } from 'lucide-react';
 import type { ReelTemplate } from '@/types';
 
 interface TemplateCardProps {
@@ -39,13 +39,21 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
           <div className="flex items-center gap-4 pt-2">
             <div className="flex items-center gap-1.5 text-white/60 text-xs">
               <Image className="w-3.5 h-3.5" />
-              <span>{template.referenceImagesRequired} photos needed</span>
+              <span>{template.referenceImagesRequired} photos</span>
             </div>
             <div className="flex items-center gap-1.5 text-white/60 text-xs">
               <Play className="w-3.5 h-3.5" />
               <span>{template.shots} shots</span>
             </div>
           </div>
+        </div>
+      </div>
+      
+      {/* Price badge */}
+      <div className="absolute top-4 left-4">
+        <div className="px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-foreground text-sm font-bold flex items-center gap-0.5">
+          <IndianRupee className="w-3.5 h-3.5" />
+          {template.price}
         </div>
       </div>
       

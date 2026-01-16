@@ -9,6 +9,7 @@ export interface ReelTemplate {
   prompts: string[];
   videoPrompts: string[];
   creatomateTemplateId: string;
+  price: number; // Price in INR
 }
 
 // Generated content
