@@ -6,12 +6,6 @@ verify_jwt = false
 [functions.verify-razorpay-payment]
 verify_jwt = false
 
-[functions.initiate-upi-payment]
-verify_jwt = false
-
-[functions.razorpay-webhook]
-verify_jwt = false
-
 [functions.disconnect-social]
 verify_jwt = false
 

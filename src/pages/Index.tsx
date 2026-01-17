@@ -11,7 +11,7 @@ import { FAQSection } from '@/components/FAQSection';
 import { CTASection } from '@/components/CTASection';
 import { Footer } from '@/components/Footer';
 import { RegistrationModal } from '@/components/RegistrationModal';
-import { UPIPaymentScanner } from '@/components/UPIPaymentScanner';
+import { PaymentQRModal } from '@/components/PaymentQRModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +26,7 @@ type AppStatus = 'template' | 'upload' | 'generating' | 'review' | 'payment' | '
 const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [showPaymentScanner, setShowPaymentScanner] = useState(false);
+  const [showPaymentQR, setShowPaymentQR] = useState(false);
   
   const { user } = useAuth();
   const { isRegistered, refetch } = useUserCredits();
@@ -149,14 +149,14 @@ const Index = () => {
     setRegeneratingImageId(null);
   };
 
-  // Show payment scanner before video generation
+  // Show payment QR before video generation
   const handleGenerateVideosClick = () => {
-    setShowPaymentScanner(true);
+    setShowPaymentQR(true);
   };
 
   // After payment, start video generation
   const handlePaymentComplete = async () => {
-    setShowPaymentScanner(false);
+    setShowPaymentQR(false);
     await generateVideos();
   };
 
@@ -366,9 +366,9 @@ const Index = () => {
       />
 
       {selectedTemplate && (
-        <UPIPaymentScanner
-          isOpen={showPaymentScanner}
-          onClose={() => setShowPaymentScanner(false)}
+        <PaymentQRModal
+          isOpen={showPaymentQR}
+          onClose={() => setShowPaymentQR(false)}
           onPaymentComplete={handlePaymentComplete}
           template={selectedTemplate}
         />
