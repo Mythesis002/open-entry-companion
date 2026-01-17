@@ -11,7 +11,7 @@ import { FAQSection } from '@/components/FAQSection';
 import { CTASection } from '@/components/CTASection';
 import { Footer } from '@/components/Footer';
 import { RegistrationModal } from '@/components/RegistrationModal';
-import { PaymentModal } from '@/components/PaymentModal';
+import { PaymentQRModal } from '@/components/PaymentQRModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,12 +21,12 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ReelTemplate, GeneratedImage, ReelProject } from '@/types';
 
-type AppStatus = 'template' | 'upload' | 'payment' | 'generating' | 'review' | 'videos' | 'composing' | 'complete';
+type AppStatus = 'template' | 'upload' | 'generating' | 'review' | 'payment' | 'videos' | 'composing' | 'complete';
 
 const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
+  const [showPaymentQR, setShowPaymentQR] = useState(false);
   
   const { user } = useAuth();
   const { isRegistered, refetch } = useUserCredits();
@@ -56,15 +56,9 @@ const Index = () => {
     setAppStatus('upload');
   };
 
-  const handleGenerateClick = () => {
+  // Generate images for FREE (no payment needed)
+  const handleGenerateClick = async () => {
     if (!selectedTemplate || referenceImages.length < selectedTemplate.referenceImagesRequired) return;
-    // Show payment modal
-    setShowPayment(true);
-  };
-
-  const handlePaymentComplete = async () => {
-    setShowPayment(false);
-    // Start the generation process after payment
     await startGeneration();
   };
 
@@ -155,7 +149,18 @@ const Index = () => {
     setRegeneratingImageId(null);
   };
 
-  const handleGenerateVideos = async () => {
+  // Show payment QR before video generation
+  const handleGenerateVideosClick = () => {
+    setShowPaymentQR(true);
+  };
+
+  // After payment, start video generation
+  const handlePaymentComplete = async () => {
+    setShowPaymentQR(false);
+    await generateVideos();
+  };
+
+  const generateVideos = async () => {
     if (!selectedTemplate) return;
 
     setAppStatus('videos');
@@ -298,7 +303,7 @@ const Index = () => {
       );
     }
 
-    // Generating stage (after payment)
+    // Generating images stage (FREE - no payment)
     if (appStatus === 'generating' && selectedTemplate) {
       return (
         <GeneratingState
@@ -308,13 +313,13 @@ const Index = () => {
       );
     }
 
-    // Image review stage
+    // Image review stage - Pay to generate videos
     if (appStatus === 'review') {
       return (
         <ImageReviewGrid
           images={generatedImages}
           onRegenerate={handleRegenerateImage}
-          onGenerateVideos={handleGenerateVideos}
+          onGenerateVideos={handleGenerateVideosClick}
           regeneratingId={regeneratingImageId}
           isGeneratingVideos={false}
         />
@@ -361,9 +366,9 @@ const Index = () => {
       />
 
       {selectedTemplate && (
-        <PaymentModal
-          isOpen={showPayment}
-          onClose={() => setShowPayment(false)}
+        <PaymentQRModal
+          isOpen={showPaymentQR}
+          onClose={() => setShowPaymentQR(false)}
           onPaymentComplete={handlePaymentComplete}
           template={selectedTemplate}
         />
