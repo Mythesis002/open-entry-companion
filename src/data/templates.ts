@@ -4,8 +4,9 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
   {
     id: 'car-sinking',
     name: 'Car Sinking Scene',
-    description: 'Viral car sinking dramatic shots - 3 epic underwater scenes',
+    description: 'Dramatic underwater shots - viral car sinking effect',
     thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=600&fit=crop',
+    previewVideo: 'https://res.cloudinary.com/dkr5qwdjd/video/upload/q_auto:low,w_400/opentry_ads_video_1.mp4',
     shots: 3,
     referenceImagesRequired: 1,
     prompts: [

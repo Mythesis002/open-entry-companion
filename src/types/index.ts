@@ -4,6 +4,7 @@ export interface ReelTemplate {
   name: string;
   description: string;
   thumbnail: string;
+  previewVideo?: string; // Optional preview video URL
   shots: number;
   referenceImagesRequired: number;
   prompts: string[];
