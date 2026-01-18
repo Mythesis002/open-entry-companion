@@ -357,7 +357,7 @@ const Index = () => {
         <CTASection />
       </main>
 
-      <Footer setView={() => {}} />
+      <Footer />
 
       <RegistrationModal 
         isOpen={showRegistration}
