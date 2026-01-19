@@ -45,30 +45,13 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
         className="flex items-center gap-2 cursor-pointer" 
         onClick={() => setView('studio')}
       >
-        <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center shadow-sm">
-          <img 
-            src="https://res.cloudinary.com/dkr5qwdjd/image/upload/v1767983303/opentry.png" 
-            className="w-8 h-8" 
-            alt="Opentry AI video ads logo" 
-          />
+        <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center shadow-sm">
+          <span className="text-background font-bold text-sm">R</span>
         </div>
-        <span className="text-base font-extrabold font-display tracking-tighter">Opentry</span>
+        <span className="text-base font-extrabold font-display tracking-tighter">Reel Studio</span>
       </div>
       
       <nav className="hidden lg:flex items-center gap-8">
-        <button 
-          onClick={() => setView('studio')} 
-          className={`text-xs font-bold transition-colors ${view === 'studio' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          Studio
-        </button>
-        <button 
-          onClick={() => setView('social')} 
-          className={`text-xs font-bold transition-colors ${view === 'social' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          Automation
-        </button>
-        <div className="h-4 w-px bg-border" />
         
         {user ? (
           <DropdownMenu>
