@@ -6,9 +6,11 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
     name: 'Car Sinking Scene',
     description: 'Dramatic underwater shots - viral car sinking effect',
     thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=600&fit=crop',
-    previewVideo: 'https://res.cloudinary.com/dkr5qwdjd/video/upload/q_auto:low,w_400/opentry_ads_video_1.mp4',
+    previewVideo: 'https://res.cloudinary.com/dkr5qwdjd/video/upload/br_5016k,q_33,vc_h264/v1768843383/carsinking.mov',
     shots: 3,
     referenceImagesRequired: 1,
+    likes: 2847,
+    usedCount: 12543,
     prompts: [
       "Hyper-realistic underwater shot of a the car in reference image floating in dark blue ocean water like a spaceship. Three-quarter front view of the whole car, headlights, spoiler and body lines clearly visible. Dynamic, shimmering sun-ray caustics dance and ripple across the car hood and roof. Trails of small, distinct air bubbles rise lazily from the rear of the chassis. The lighting is dramatic and moody with deep shadows, clear beams of light from above, tiny particles in the water for atmosphere. High-end cinematic look, ultra-detailed, 4K, vertical 9:16, photoreal, no text.",
       "Ultra-realistic underwater photo of a car in the reference image. Extreme close-up of the front wheel and fender, slightly tilted, as if the car is diving underwater. The wheel rim and tire are sharp and detailed, wet metal and rubber with realistic reflections. Surround the wheel with floating dust and sand particles, tiny air bubbles and subtle scratches on the body. Strong sun rays shining from the water surface above, blue-green ambient light, cinematic contrast, shallow depth of field, bokeh in the background. Hyper-detailed, 4K, vertical 9:16, photoreal, no text.",
