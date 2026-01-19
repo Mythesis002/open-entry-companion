@@ -7,6 +7,8 @@ export interface ReelTemplate {
   previewVideo?: string; // Optional preview video URL
   shots: number;
   referenceImagesRequired: number;
+  likes: number;
+  usedCount: number;
   prompts: string[];
   videoPrompts: string[];
   creatomateTemplateId: string;

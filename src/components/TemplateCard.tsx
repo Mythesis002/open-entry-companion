@@ -1,11 +1,21 @@
 import { useState, useRef } from 'react';
-import { Play, Image, IndianRupee, Volume2, VolumeX } from 'lucide-react';
+import { Heart, Users, IndianRupee, Volume2, VolumeX } from 'lucide-react';
 import type { ReelTemplate } from '@/types';
 
 interface TemplateCardProps {
   template: ReelTemplate;
   onSelect: (template: ReelTemplate) => void;
 }
+
+const formatCount = (num: number): string => {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  }
+  return num.toString();
+};
 
 export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -41,7 +51,7 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
     >
       {/* Video/Thumbnail Container */}
       <div className="aspect-[9/16] relative overflow-hidden">
-        {/* Preview Video */}
+        {/* Preview Video - Always visible */}
         {template.previewVideo && (
           <video
             ref={videoRef}
@@ -50,38 +60,48 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
             muted={isMuted}
             loop
             playsInline
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-              isHovered ? 'opacity-100' : 'opacity-0'
-            }`}
+            autoPlay
+            className="absolute inset-0 w-full h-full object-cover"
           />
         )}
         
-        {/* Fallback Thumbnail */}
-        <img 
-          src={template.thumbnail} 
-          alt={template.name}
-          className={`w-full h-full object-cover transition-all duration-500 ${
-            isHovered && template.previewVideo ? 'opacity-0' : 'opacity-100'
-          } ${isHovered ? 'scale-105' : 'scale-100'}`}
-        />
-        
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-        
-        {/* Play indicator (when no video or video loading) */}
+        {/* Fallback Thumbnail only if no video */}
         {!template.previewVideo && (
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-              <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-            </div>
-          </div>
+          <img 
+            src={template.thumbnail} 
+            alt={template.name}
+            className="w-full h-full object-cover"
+          />
         )}
         
-        {/* Mute toggle (only when hovering and has video) */}
-        {template.previewVideo && isHovered && (
+        {/* Top gradient for stats */}
+        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+        
+        {/* Bottom gradient */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+        
+        {/* Top Stats - Likes and Used */}
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Likes */}
+            <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
+              <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
+              <span className="text-white text-xs font-medium">{formatCount(template.likes)}</span>
+            </div>
+            
+            {/* Used Count */}
+            <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
+              <Users className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-white text-xs font-medium">{formatCount(template.usedCount)}</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Mute toggle */}
+        {template.previewVideo && (
           <button
             onClick={toggleMute}
-            className="absolute bottom-20 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors z-10"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
           >
             {isMuted ? (
               <VolumeX className="w-4 h-4" />
@@ -91,29 +111,17 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
           </button>
         )}
         
-        {/* Bottom Info */}
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="text-lg font-bold text-white leading-tight mb-1">{template.name}</h3>
-          <p className="text-white/70 text-xs line-clamp-2 mb-3">{template.description}</p>
+        {/* Bottom - Price */}
+        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+          {/* Price Tag */}
+          <div className="flex items-center gap-0.5 bg-primary text-primary-foreground font-bold text-sm px-3 py-1.5 rounded-full">
+            <IndianRupee className="w-3.5 h-3.5" />
+            <span>{template.price}</span>
+          </div>
           
-          {/* Stats Row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 text-white/60 text-xs">
-                <Image className="w-3 h-3" />
-                <span>{template.referenceImagesRequired}</span>
-              </div>
-              <div className="flex items-center gap-1 text-white/60 text-xs">
-                <Play className="w-3 h-3" />
-                <span>{template.shots} shots</span>
-              </div>
-            </div>
-            
-            {/* Price */}
-            <div className="flex items-center gap-0.5 text-white font-bold text-sm">
-              <IndianRupee className="w-3.5 h-3.5" />
-              <span>{template.price}</span>
-            </div>
+          {/* Use Template CTA */}
+          <div className="bg-white/90 backdrop-blur-sm text-black font-semibold text-xs px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+            Use Template
           </div>
         </div>
       </div>
