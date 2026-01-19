@@ -2,24 +2,21 @@ import { ArrowUp } from 'lucide-react';
 
 export function CTASection() {
   return (
-    <section className="py-16 px-6 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10 border-t border-border/50">
-      <div className="max-w-2xl mx-auto relative text-center">
-        {/* Headline */}
-        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground mb-4">
-          Ready to Create Your Viral Reel?
+    <section className="py-12 px-6 bg-muted/50 border-t border-border/50">
+      <div className="max-w-md mx-auto text-center">
+        <h2 className="text-lg font-bold mb-2">
+          Ready to Create?
         </h2>
-        
-        <p className="text-muted-foreground text-base max-w-md mx-auto mb-8">
-          Pick a template and start creating in seconds. No design skills needed.
+        <p className="text-sm text-muted-foreground mb-6">
+          Pick a template and start in seconds.
         </p>
         
-        {/* CTA Button */}
         <button 
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="inline-flex items-center gap-2 h-12 px-8 bg-foreground text-background rounded-xl font-semibold text-sm hover:bg-foreground/90 transition-all hover:scale-105 shadow-lg"
+          className="inline-flex items-center gap-2 h-10 px-6 bg-foreground text-background rounded-lg font-medium text-sm hover:bg-foreground/90 transition-all"
         >
-          <ArrowUp size={16} />
-          Start Creating
+          <ArrowUp size={14} />
+          Start Now
         </button>
       </div>
     </section>

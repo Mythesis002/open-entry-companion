@@ -254,11 +254,11 @@ const Index = () => {
               <span className="text-sm font-semibold text-foreground/80">AI-Powered Viral Reels</span>
             </div>
             
-            <h1 className="text-5xl lg:text-7xl font-extrabold font-display leading-[1] tracking-tighter text-foreground">
-              Reel<br/>Studio
+            <h1 className="text-4xl lg:text-6xl font-extrabold font-display leading-[1.1] tracking-tighter text-foreground">
+              Create Viral Reels<br/>with AI
             </h1>
-            <p className="text-base lg:text-lg text-muted-foreground font-medium max-w-xl mx-auto">
-              Create trending AI-generated reels in minutes. Pick a viral template, upload your photos, and let AI do the magic.
+            <p className="text-base text-muted-foreground max-w-lg mx-auto">
+              Pick a trending template, upload your photo, and get a ready-to-post reel in minutes.
             </p>
           </div>
 
