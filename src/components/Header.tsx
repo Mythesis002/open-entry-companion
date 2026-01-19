@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import opentryLogo from '@/assets/opentry-logo.png';
 
 interface HeaderProps {
   view: 'studio' | 'social';
@@ -45,10 +46,12 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
         className="flex items-center gap-2 cursor-pointer" 
         onClick={() => setView('studio')}
       >
-        <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center shadow-sm">
-          <span className="text-background font-bold text-sm">R</span>
-        </div>
-        <span className="text-base font-extrabold font-display tracking-tighter">Reel Studio</span>
+        <img 
+          src={opentryLogo} 
+          className="w-8 h-8" 
+          alt="Opentry logo" 
+        />
+        <span className="text-base font-extrabold font-display tracking-tighter">Opentry</span>
       </div>
       
       <nav className="hidden lg:flex items-center gap-8">

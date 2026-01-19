@@ -1,12 +1,16 @@
+import opentryLogo from '@/assets/opentry-logo.png';
+
 export function Footer() {
   return (
     <footer className="bg-card border-t border-border py-6 px-6">
       <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-foreground rounded-lg flex items-center justify-center">
-            <span className="text-background font-bold text-xs">R</span>
-          </div>
-          <span className="text-sm font-semibold">Reel Studio</span>
+          <img 
+            src={opentryLogo} 
+            className="w-7 h-7" 
+            alt="Opentry logo" 
+          />
+          <span className="text-sm font-semibold">Opentry</span>
         </div>
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -16,7 +20,7 @@ export function Footer() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          © 2025 Reel Studio
+          © 2025 Opentry
         </p>
       </div>
     </footer>
