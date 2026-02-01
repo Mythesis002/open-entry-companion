@@ -1,18 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { fileURLToPath } from "url";
 import { componentTagger } from "lovable-tagger";
-import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const resolve: any = {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-    extensions: [".tsx", ".ts", ".jsx", ".js", ".mjs"],
-  };
-
   return {
     server: {
       host: "::",
@@ -22,7 +18,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-    resolve,
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
     optimizeDeps: {
       include: [
         "react",
