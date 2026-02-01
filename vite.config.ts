@@ -6,7 +6,18 @@ import { componentTagger } from "lovable-tagger";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const srcPath = path.resolve(__dirname, "./src");
+
+// Custom resolver plugin for @ alias
+function aliasResolverPlugin() {
+  return {
+    name: "alias-resolver",
+    resolveId(id) {
+      if (id.startsWith("@/")) {
+        return path.resolve(__dirname, id.replace("@/", "src/"));
+      }
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -16,17 +27,15 @@ export default defineConfig(({ mode }) => {
       port: 8080,
       fs: {
         allow: [__dirname],
-        strict: true,
       },
     },
-    plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+    plugins: [
+      aliasResolverPlugin(),
+      react(),
+      mode === "development" && componentTagger(),
+    ].filter(Boolean),
     resolve: {
-      alias: [
-        {
-          find: "@",
-          replacement: srcPath,
-        },
-      ],
+      extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
     },
     optimizeDeps: {
       include: [
