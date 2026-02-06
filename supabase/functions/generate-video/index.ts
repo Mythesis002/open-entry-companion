@@ -13,92 +13,96 @@ serve(async (req) => {
   try {
     const { imageUrl, prompt } = await req.json();
     
-    console.log('Generating video from image');
-    console.log('Prompt:', prompt);
+    console.log('Generating video from image using Veo 3');
+    console.log('Image URL:', imageUrl);
+    console.log('Prompt:', prompt?.substring(0, 100) + '...');
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const VEO_API_KEY = Deno.env.get('VEO_API_KEY');
+    if (!VEO_API_KEY) {
+      throw new Error('VEO_API_KEY is not configured');
     }
 
-    // Use Gemini to generate video from image
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Step 1: Create video generation task with Veo 3
+    const createResponse = await fetch('https://api.aimlapi.com/v2/generate/video/google/generation', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${VEO_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Create a short 3-5 second video animation based on this image. The motion should be: ${prompt}
-                
-Return the video as a base64 encoded mp4.`
-              },
-              {
-                type: 'image_url',
-                image_url: { url: imageUrl }
-              }
-            ]
-          }
-        ],
-        modalities: ['video', 'text']
-      }),
+        model: 'veo-3',
+        prompt: prompt,
+        image_url: imageUrl,
+        aspect_ratio: '9:16',
+        duration: 5
+      })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error('Veo 3 create error:', createResponse.status, errorText);
       
-      if (response.status === 429) {
+      // Try alternative endpoint format
+      const altResponse = await fetch('https://api.aimlapi.com/v2/video/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${VEO_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/veo-3.0-i2v',
+          prompt: prompt,
+          image_url: imageUrl,
+          aspect_ratio: '9:16',
+          duration: 5
+        })
+      });
+
+      if (!altResponse.ok) {
+        const altError = await altResponse.text();
+        console.error('Alternative endpoint error:', altResponse.status, altError);
+        throw new Error(`Video generation failed: ${altError}`);
+      }
+
+      const altData = await altResponse.json();
+      console.log('Alternative endpoint response:', JSON.stringify(altData));
+      
+      // Handle async generation with polling
+      const generationId = altData.id || altData.generation_id;
+      if (generationId) {
+        return await pollForCompletion(generationId, VEO_API_KEY);
+      }
+      
+      // Direct video URL returned
+      if (altData.video_url || altData.output?.video_url) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ videoUrl: altData.video_url || altData.output?.video_url }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
+      
+      throw new Error('Unexpected response format from video API');
+    }
+
+    const createData = await createResponse.json();
+    console.log('Veo 3 create response:', JSON.stringify(createData));
+
+    // Get generation ID for polling
+    const generationId = createData.id || createData.generation_id || createData.task_id;
+    
+    if (!generationId) {
+      // Direct video URL returned (some APIs return immediately)
+      if (createData.video_url || createData.output?.video_url || createData.url) {
         return new Response(
-          JSON.stringify({ error: 'Credits exhausted. Please add credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ videoUrl: createData.video_url || createData.output?.video_url || createData.url }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      // Fallback: For now, return the image as a static "video" placeholder
-      // In production, you'd use a proper video generation API
-      console.log('Video generation not supported, returning placeholder');
-      return new Response(
-        JSON.stringify({ 
-          videoUrl: imageUrl,
-          isPlaceholder: true,
-          message: 'Video generation will use Creatomate for final composition'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('No generation ID or video URL in response');
     }
 
-    const data = await response.json();
-    const videoData = data.choices?.[0]?.message?.videos?.[0]?.video_url?.url;
-
-    if (!videoData) {
-      // Fallback
-      return new Response(
-        JSON.stringify({ 
-          videoUrl: imageUrl,
-          isPlaceholder: true
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ videoUrl: videoData }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Step 2: Poll for completion
+    return await pollForCompletion(generationId, VEO_API_KEY);
 
   } catch (error: unknown) {
     console.error('Error generating video:', error);
@@ -109,3 +113,69 @@ Return the video as a base64 encoded mp4.`
     );
   }
 });
+
+async function pollForCompletion(generationId: string, apiKey: string): Promise<Response> {
+  const maxAttempts = 120; // 4 minutes max (2 second intervals)
+  let attempts = 0;
+
+  console.log(`Polling for video generation: ${generationId}`);
+
+  while (attempts < maxAttempts) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    attempts++;
+
+    try {
+      // Try multiple status endpoint formats
+      const statusUrls = [
+        `https://api.aimlapi.com/v2/generate/video/google/generation/${generationId}`,
+        `https://api.aimlapi.com/v2/video/generations/${generationId}`,
+        `https://api.aimlapi.com/v2/generations/${generationId}`
+      ];
+
+      for (const statusUrl of statusUrls) {
+        const statusResponse = await fetch(statusUrl, {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+
+        if (!statusResponse.ok) continue;
+
+        const statusData = await statusResponse.json();
+        console.log(`Attempt ${attempts} status:`, statusData.status || statusData.state);
+
+        const status = statusData.status || statusData.state;
+
+        // Check for completion
+        if (status === 'completed' || status === 'succeeded' || status === 'success') {
+          const videoUrl = statusData.video_url || statusData.output?.video_url || 
+                          statusData.result?.video_url || statusData.url ||
+                          statusData.output?.url || statusData.result?.url;
+          
+          if (videoUrl) {
+            console.log('Video generation complete:', videoUrl);
+            return new Response(
+              JSON.stringify({ videoUrl }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        // Check for failure
+        if (status === 'failed' || status === 'error') {
+          throw new Error(statusData.error || statusData.message || 'Video generation failed');
+        }
+
+        // Still processing, continue polling
+        if (status === 'processing' || status === 'pending' || status === 'queued' || status === 'in_progress') {
+          break; // Found the right endpoint, continue waiting
+        }
+      }
+    } catch (pollError) {
+      console.error(`Polling error attempt ${attempts}:`, pollError);
+      if (attempts >= maxAttempts - 5) {
+        throw pollError;
+      }
+    }
+  }
+
+  throw new Error('Video generation timeout - please try again');
+}

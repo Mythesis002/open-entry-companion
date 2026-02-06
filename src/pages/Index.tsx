@@ -19,9 +19,15 @@ import { useToast } from '@/hooks/use-toast';
 import { REEL_TEMPLATES } from '@/data/templates';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ReelTemplate, GeneratedImage, ReelProject } from '@/types';
+import type { ReelTemplate, GeneratedImage } from '@/types';
 
 type AppStatus = 'template' | 'upload' | 'generating' | 'review' | 'payment' | 'videos' | 'composing' | 'complete';
+
+interface VideoProgress {
+  id: string;
+  status: 'pending' | 'generating' | 'complete' | 'error';
+  videoUrl?: string;
+}
 
 const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -37,6 +43,7 @@ const Index = () => {
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [generatedVideos, setGeneratedVideos] = useState<string[]>([]);
+  const [videoProgress, setVideoProgress] = useState<VideoProgress[]>([]);
   const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
   const [appStatus, setAppStatus] = useState<AppStatus>('template');
   const [regeneratingImageId, setRegeneratingImageId] = useState<string | null>(null);
@@ -165,9 +172,23 @@ const Index = () => {
 
     setAppStatus('videos');
 
-    // Generate all videos in parallel
+    // Initialize video progress tracking
+    const initialProgress: VideoProgress[] = generatedImages.map((img, i) => ({
+      id: `video-${i}`,
+      status: 'pending' as const
+    }));
+    setVideoProgress(initialProgress);
+
+    // Generate all videos in parallel with individual progress tracking
     const videoPromises = generatedImages.map(async (img, i) => {
+      // Mark as generating
+      setVideoProgress(prev => prev.map((v, idx) => 
+        idx === i ? { ...v, status: 'generating' as const } : v
+      ));
+
       try {
+        console.log(`Starting video generation ${i + 1}/${generatedImages.length}`);
+        
         const response = await supabase.functions.invoke('generate-video', {
           body: {
             imageUrl: img.imageUrl,
@@ -176,9 +197,30 @@ const Index = () => {
         });
 
         if (response.error) throw response.error;
-        return response.data.videoUrl;
+        
+        const videoUrl = response.data.videoUrl;
+        console.log(`Video ${i + 1} complete:`, videoUrl);
+
+        // Mark as complete with video URL
+        setVideoProgress(prev => prev.map((v, idx) => 
+          idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
+        ));
+
+        return videoUrl;
       } catch (error: unknown) {
         console.error(`Error generating video ${i}:`, error);
+        
+        // Mark as error
+        setVideoProgress(prev => prev.map((v, idx) => 
+          idx === i ? { ...v, status: 'error' as const } : v
+        ));
+
+        toast({
+          variant: 'destructive',
+          title: `Video ${i + 1} Error`,
+          description: error instanceof Error ? error.message : 'Generation failed'
+        });
+
         // Use image as fallback
         return img.imageUrl;
       }
@@ -229,6 +271,7 @@ const Index = () => {
     setReferenceImages([]);
     setGeneratedImages([]);
     setGeneratedVideos([]);
+    setVideoProgress([]);
     setFinalVideoUrl(null);
     setAppStatus('template');
   };
@@ -332,6 +375,7 @@ const Index = () => {
         status={appStatus as 'videos' | 'composing' | 'complete'}
         finalVideoUrl={finalVideoUrl}
         onStartOver={handleStartOver}
+        videoProgress={videoProgress}
       />
     );
   };
