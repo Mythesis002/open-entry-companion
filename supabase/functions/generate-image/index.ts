@@ -43,7 +43,7 @@ Description: ${prompt}`
       }
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/images/generations', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -51,10 +51,8 @@ Description: ${prompt}`
       },
       body: JSON.stringify({
         model: 'google/gemini-3-pro-image-preview',
-        prompt: prompt,
-        n: 1,
-        size: '1024x1792',
-        response_format: 'url'
+        messages: [{ role: 'user', content }],
+        modalities: ['image', 'text']
       }),
     });
 
@@ -79,14 +77,14 @@ Description: ${prompt}`
     }
 
     const data = await response.json();
-    console.log('AI response received');
+    console.log('AI response received:', JSON.stringify(data).substring(0, 200));
 
-    // Extract generated image from images/generations response
-    const imageData = data.data?.[0]?.url;
+    // Extract generated image from chat completion response with images
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!imageData) {
       console.error('No image in response:', JSON.stringify(data).substring(0, 500));
-      throw new Error('No image generated');
+      throw new Error('No image generated - model may have declined the request');
     }
 
     return new Response(
