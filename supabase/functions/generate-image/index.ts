@@ -43,7 +43,7 @@ Description: ${prompt}`
       }
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/images/generations', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -51,10 +51,10 @@ Description: ${prompt}`
       },
       body: JSON.stringify({
         model: 'google/gemini-3-pro-image-preview',
-        messages: [
-          { role: 'user', content }
-        ],
-        modalities: ['image', 'text']
+        prompt: prompt,
+        n: 1,
+        size: '1024x1792',
+        response_format: 'url'
       }),
     });
 
@@ -81,8 +81,8 @@ Description: ${prompt}`
     const data = await response.json();
     console.log('AI response received');
 
-    // Extract generated image
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    // Extract generated image from images/generations response
+    const imageData = data.data?.[0]?.url;
     
     if (!imageData) {
       console.error('No image in response:', JSON.stringify(data).substring(0, 500));
