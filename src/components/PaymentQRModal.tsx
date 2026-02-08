@@ -21,7 +21,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const [error, setError] = useState<string | null>(null);
   const [qrData, setQrData] = useState<{
     qr_id: string;
-    qr_image_url: string;
+    payment_link: string;
     upi_link: string;
     close_by: number;
     transaction_id: string;
@@ -160,7 +160,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
       
       setQrData({
         qr_id: qrResponse.qr_id,
-        qr_image_url: qrResponse.qr_image_url,
+        payment_link: qrResponse.payment_link,
         upi_link: qrResponse.upi_link,
         close_by: qrResponse.close_by,
         transaction_id: transactionId
@@ -274,22 +274,22 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
                 </div>
               </div>
 
-              {/* QR Code */}
+              {/* QR Code - Clean design using Razorpay's payment link */}
               <div className="flex flex-col items-center gap-4">
-                <div className="relative p-6 bg-white rounded-2xl shadow-lg border border-border">
+                <div className="relative p-6 bg-white rounded-3xl shadow-xl border border-border">
                   <QRCodeSVG 
-                    value={qrData.upi_link}
-                    size={220}
+                    value={qrData.payment_link}
+                    size={240}
                     level="H"
                     includeMargin={false}
                     bgColor="#ffffff"
-                    fgColor="#000000"
+                    fgColor="#18181b"
                   />
                 </div>
-                <p className="text-sm text-muted-foreground text-center">
-                  Scan with any UPI app<br />
-                  <span className="text-xs">(GPay, PhonePe, Paytm, etc.)</span>
-                </p>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" className="h-6" />
+                  <span className="text-sm">Scan with any UPI app</span>
+                </div>
               </div>
 
               {/* Divider */}

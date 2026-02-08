@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -97,13 +97,18 @@ serve(async (req) => {
       console.error('Error updating transaction:', updateError);
     }
 
+    // Log full response for debugging
+    console.log('Full QR response:', JSON.stringify(qrCode));
+
     return new Response(JSON.stringify({
       qr_id: qrCode.id,
       qr_image_url: qrCode.image_url,
       amount: amount,
-      upi_link: `upi://pay?pa=${qrCode.customer_id || 'opentry@razorpay'}&pn=Opentry&am=${amount}&cu=INR&tn=VideoGeneration`,
-      close_by: closeBy,
-      short_url: qrCode.short_url
+      // Use short_url for clean QR generation - this is the real payment link
+      payment_link: qrCode.short_url,
+      // Use the deep link for direct UPI app opening
+      upi_link: qrCode.short_url,
+      close_by: closeBy
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
