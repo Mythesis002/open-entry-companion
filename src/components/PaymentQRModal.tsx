@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, CheckCircle2, IndianRupee, AlertCircle, Smartphone, Timer } from 'lucide-react';
+import { Loader2, CheckCircle2, IndianRupee, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { QRCodeSVG } from 'qrcode.react';
 import type { ReelTemplate } from '@/types';
 
 interface PaymentQRModalProps {
@@ -15,58 +14,32 @@ interface PaymentQRModalProps {
   template: ReelTemplate;
 }
 
+// Razorpay Key ID (public/publishable key)
+const RAZORPAY_KEY_ID = "rzp_live_R9sCSgyncgleJR";
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }: PaymentQRModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'qr_generated' | 'completed' | 'failed' | 'expired'>('idle');
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [qrData, setQrData] = useState<{
-    qr_id: string;
-    payment_link: string;
-    upi_link: string;
-    close_by: number;
-    transaction_id: string;
-  } | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(900); // 15 minutes
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Cleanup on unmount or close
+  // Load Razorpay SDK
   useEffect(() => {
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    if (!document.getElementById('razorpay-script')) {
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
   }, []);
-
-  // Reset state when modal opens
-  useEffect(() => {
-    if (isOpen && paymentStatus === 'idle') {
-      initiatePayment();
-    }
-  }, [isOpen]);
-
-  // Timer countdown
-  useEffect(() => {
-    if (paymentStatus === 'qr_generated' && qrData) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            setPaymentStatus('expired');
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            if (timerRef.current) clearInterval(timerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-      };
-    }
-  }, [paymentStatus, qrData]);
 
   const createTransaction = async (): Promise<string | null> => {
     if (!user) return null;
@@ -91,11 +64,11 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
     }
   };
 
-  const createQRCode = async (transactionId: string) => {
+  const createRazorpayOrder = async (transactionId: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
 
-    const response = await supabase.functions.invoke('create-razorpay-qr', {
+    const response = await supabase.functions.invoke('create-razorpay-order', {
       body: { amount: template.price, transaction_id: transactionId },
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
@@ -104,43 +77,22 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
     return response.data;
   };
 
-  const checkPaymentStatus = async (qrId: string, transactionId: string) => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+  const verifyPayment = async (
+    razorpay_order_id: string,
+    razorpay_payment_id: string,
+    razorpay_signature: string,
+    transaction_id: string
+  ) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
 
-      const response = await supabase.functions.invoke('check-qr-payment', {
-        body: { qr_id: qrId, transaction_id: transactionId },
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
+    const response = await supabase.functions.invoke('verify-razorpay-payment', {
+      body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, transaction_id },
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
 
-      if (response.error) throw new Error(response.error.message);
-      
-      if (response.data.paid) {
-        // Payment successful!
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        if (timerRef.current) clearInterval(timerRef.current);
-        
-        setPaymentStatus('completed');
-        toast({ 
-          title: '✅ Payment Successful!', 
-          description: 'Starting video generation...' 
-        });
-
-        setTimeout(() => {
-          onPaymentComplete();
-        }, 1500);
-      }
-    } catch (err) {
-      console.error('Error checking payment:', err);
-    }
-  };
-
-  const startPolling = (qrId: string, transactionId: string) => {
-    // Poll every 3 seconds
-    pollingRef.current = setInterval(() => {
-      checkPaymentStatus(qrId, transactionId);
-    }, 3000);
+    if (response.error) throw new Error(response.error.message);
+    return response.data;
   };
 
   const initiatePayment = useCallback(async () => {
@@ -148,181 +100,194 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
 
     setIsLoading(true);
     setError(null);
-    setTimeRemaining(900);
+    setPaymentStatus('processing');
 
     try {
       // Step 1: Create transaction
       const transactionId = await createTransaction();
       if (!transactionId) throw new Error('Failed to create transaction');
 
-      // Step 2: Create Razorpay QR Code
-      const qrResponse = await createQRCode(transactionId);
-      
-      setQrData({
-        qr_id: qrResponse.qr_id,
-        payment_link: qrResponse.payment_link,
-        upi_link: qrResponse.upi_link,
-        close_by: qrResponse.close_by,
-        transaction_id: transactionId
-      });
-      
-      setPaymentStatus('qr_generated');
-      
-      // Step 3: Start polling for payment status
-      startPolling(qrResponse.qr_id, transactionId);
+      // Step 2: Create Razorpay order
+      const orderData = await createRazorpayOrder(transactionId);
 
+      // Step 3: Open Razorpay checkout
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Opentry',
+        description: `Generate videos for ${template.name}`,
+        order_id: orderData.order_id,
+        prefill: {
+          email: user.email || '',
+        },
+        theme: {
+          color: '#ec4899',
+        },
+        modal: {
+          ondismiss: () => {
+            setIsLoading(false);
+            setPaymentStatus('idle');
+          }
+        },
+        handler: async (response: any) => {
+          try {
+            // Verify payment
+            await verifyPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              transactionId
+            );
+
+            setPaymentStatus('completed');
+            toast({ 
+              title: '✅ Payment Successful!', 
+              description: 'Starting video generation...' 
+            });
+
+            setTimeout(() => {
+              onPaymentComplete();
+            }, 1500);
+          } catch (verifyError: any) {
+            console.error('Payment verification failed:', verifyError);
+            setError('Payment verification failed. Please contact support.');
+            setPaymentStatus('failed');
+          }
+        },
+      };
+
+      if (window.Razorpay) {
+        const razorpay = new window.Razorpay(options);
+        razorpay.on('payment.failed', (response: any) => {
+          console.error('Payment failed:', response.error);
+          setError(response.error.description || 'Payment failed. Please try again.');
+          setPaymentStatus('failed');
+          setIsLoading(false);
+        });
+        razorpay.open();
+      } else {
+        throw new Error('Razorpay SDK not loaded');
+      }
     } catch (err: any) {
       console.error('Payment initiation error:', err);
       setError(err.message || 'Something went wrong. Please try again.');
       setPaymentStatus('failed');
-    } finally {
       setIsLoading(false);
     }
   }, [user, template, isLoading, onPaymentComplete, toast]);
 
-  const handleGPayClick = () => {
-    if (qrData?.upi_link) {
-      // Open GPay/UPI app
-      window.location.href = qrData.upi_link;
-    }
-  };
-
   const handleClose = () => {
-    if (paymentStatus !== 'qr_generated') {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (paymentStatus !== 'processing') {
       setPaymentStatus('idle');
       setError(null);
       setIsLoading(false);
-      setQrData(null);
       onClose();
     }
   };
 
-  const handleRetry = () => {
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    if (timerRef.current) clearInterval(timerRef.current);
-    setPaymentStatus('idle');
-    setError(null);
-    setQrData(null);
-    initiatePayment();
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
-        {/* Gradient Header */}
-        <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-center text-white">Complete Payment</DialogTitle>
-            <DialogDescription className="text-center text-white/90">
-              Pay ₹{template.price} to generate videos for {template.name}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-center">Complete Payment</DialogTitle>
+          <DialogDescription className="text-center">
+            Pay ₹{template.price} to generate videos for {template.name}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="space-y-6 py-4">
           {paymentStatus === 'completed' ? (
+            // Payment success state
             <div className="flex flex-col items-center gap-4 py-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/30 animate-pulse">
-                <CheckCircle2 className="w-12 h-12 text-white" />
+              <div className="w-20 h-20 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center animate-pulse">
+                <CheckCircle2 className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-green-600">Payment Successful!</h3>
+              <h3 className="text-xl font-bold text-green-600">Payment Successful!</h3>
               <p className="text-sm text-muted-foreground text-center">
                 Starting video generation...
               </p>
             </div>
-          ) : paymentStatus === 'failed' || paymentStatus === 'expired' ? (
+          ) : paymentStatus === 'failed' ? (
+            // Payment failed state
             <div className="flex flex-col items-center gap-4 py-8">
-              <div className="w-24 h-24 rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertCircle className="w-12 h-12 text-destructive" />
+              <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-destructive" />
               </div>
-              <h3 className="text-2xl font-bold text-destructive">
-                {paymentStatus === 'expired' ? 'QR Code Expired' : 'Payment Failed'}
-              </h3>
+              <h3 className="text-xl font-bold text-destructive">Payment Failed</h3>
               <p className="text-sm text-muted-foreground text-center">
-                {error || (paymentStatus === 'expired' ? 'The QR code has expired. Please try again.' : 'Something went wrong. Please try again.')}
+                {error || 'Something went wrong. Please try again.'}
               </p>
-              <Button onClick={handleRetry} className="bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white">
+              <Button onClick={() => { setPaymentStatus('idle'); setError(null); }} variant="outline">
                 Try Again
               </Button>
             </div>
-          ) : isLoading ? (
-            <div className="flex flex-col items-center gap-4 py-12">
-              <Loader2 className="w-12 h-12 animate-spin text-pink-500" />
-              <p className="text-muted-foreground">Generating payment QR code...</p>
-            </div>
-          ) : paymentStatus === 'qr_generated' && qrData ? (
+          ) : (
             <>
-              {/* Timer */}
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <Timer className="w-4 h-4" />
-                <span className="text-sm">Expires in {formatTime(timeRemaining)}</span>
-              </div>
-
-              {/* Amount Display */}
-              <div className="text-center">
-                <div className="inline-flex items-center gap-1 text-4xl font-bold text-foreground">
+              {/* Price Display */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-pink-50 to-orange-50 border border-pink-200 text-center">
+                <div className="flex items-center justify-center gap-1 text-4xl font-bold text-foreground">
                   <IndianRupee className="w-8 h-8" />
                   <span>{template.price}</span>
                 </div>
+                <p className="text-sm text-muted-foreground mt-2">One-time payment for video generation</p>
               </div>
 
-              {/* QR Code - Clean design using Razorpay's payment link */}
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative p-6 bg-white rounded-3xl shadow-xl border border-border">
-                  <QRCodeSVG 
-                    value={qrData.payment_link}
-                    size={240}
-                    level="H"
-                    includeMargin={false}
-                    bgColor="#ffffff"
-                    fgColor="#18181b"
-                  />
+              {/* Payment Features */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Secure Payment</p>
+                    <p className="text-xs text-muted-foreground">Powered by Razorpay</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" className="h-6" />
-                  <span className="text-sm">Scan with any UPI app</span>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <span className="text-lg">📱</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">UPI, Cards & More</p>
+                    <p className="text-xs text-muted-foreground">GPay, PhonePe, Paytm, Cards, NetBanking</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Divider */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-sm text-muted-foreground">OR</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-
-              {/* GPay Button */}
+              {/* Pay Now Button */}
               <Button 
-                onClick={handleGPayClick}
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#4285F4] via-[#34A853] to-[#FBBC05] hover:opacity-90 text-white rounded-xl flex items-center justify-center gap-3 shadow-lg"
+                onClick={initiatePayment}
+                disabled={isLoading}
+                className="w-full h-14 text-lg font-bold bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white rounded-xl"
               >
-                <Smartphone className="w-6 h-6" />
-                <span>Pay with GPay / UPI App</span>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Pay ₹{template.price} Now
+                  </>
+                )}
               </Button>
 
-              {/* Payment status indicator */}
-              <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-sm text-amber-700">Waiting for payment...</span>
-              </div>
-
-              {/* Security badge */}
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-                <span>Secured by Razorpay • 256-bit encryption</span>
+              {/* Payment methods hint */}
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <img src="https://razorpay.com/assets/razorpay-glyph.svg" alt="Razorpay" className="h-6 opacity-50" />
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <span>UPI</span>
+                  <span>•</span>
+                  <span>Cards</span>
+                  <span>•</span>
+                  <span>NetBanking</span>
+                  <span>•</span>
+                  <span>Wallets</span>
+                </div>
               </div>
             </>
-          ) : null}
+          )}
         </div>
       </DialogContent>
     </Dialog>
