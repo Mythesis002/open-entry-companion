@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, CheckCircle2, IndianRupee, AlertCircle, Smartphone, QrCode, Timer } from 'lucide-react';
+import { Loader2, CheckCircle2, IndianRupee, AlertCircle, Smartphone, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { QRCodeSVG } from 'qrcode.react';
 import type { ReelTemplate } from '@/types';
 
 interface PaymentQRModalProps {
@@ -275,22 +276,15 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
 
               {/* QR Code */}
               <div className="flex flex-col items-center gap-4">
-                <div className="relative p-4 bg-white rounded-2xl shadow-lg border-2 border-pink-100">
-                  {qrData.qr_image_url ? (
-                    <img 
-                      src={qrData.qr_image_url} 
-                      alt="Payment QR Code" 
-                      className="w-56 h-56 object-contain"
-                    />
-                  ) : (
-                    <div className="w-56 h-56 flex items-center justify-center bg-muted rounded-lg">
-                      <QrCode className="w-16 h-16 text-muted-foreground" />
-                    </div>
-                  )}
-                  {/* Scanning animation overlay */}
-                  <div className="absolute inset-4 pointer-events-none overflow-hidden rounded-lg">
-                    <div className="absolute inset-0 bg-gradient-to-b from-pink-500/10 to-transparent animate-pulse" />
-                  </div>
+                <div className="relative p-6 bg-white rounded-2xl shadow-lg border border-border">
+                  <QRCodeSVG 
+                    value={qrData.upi_link}
+                    size={220}
+                    level="H"
+                    includeMargin={false}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                  />
                 </div>
                 <p className="text-sm text-muted-foreground text-center">
                   Scan with any UPI app<br />
