@@ -4,15 +4,16 @@ export interface ReelTemplate {
   name: string;
   description: string;
   thumbnail: string;
-  previewVideo?: string; // Optional preview video URL
+  previewVideo?: string;
   shots: number;
   referenceImagesRequired: number;
   likes: number;
   usedCount: number;
+  uploadTips?: string[];
   prompts: string[];
   videoPrompts: string[];
   creatomateTemplateId: string;
-  price: number; // Price in INR
+  price: number;
 }
 
 // Generated content

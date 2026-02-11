@@ -83,7 +83,7 @@ export const VideoComposing = ({
                   <p className="text-xs text-muted-foreground">
                     {video.status === 'complete' ? 'Done' : 
                      video.status === 'generating' ? 'Generating with Veo 3...' :
-                     video.status === 'error' ? 'Failed - will retry' : 'Waiting...'}
+                     video.status === 'error' ? 'Failed — skipped' : 'Waiting...'}
                   </p>
                 </div>
                 {video.status === 'complete' && video.videoUrl && (
