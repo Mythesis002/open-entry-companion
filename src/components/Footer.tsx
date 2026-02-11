@@ -20,7 +20,7 @@ export function Footer() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          © 2025 Opentry
+          © 2026 Opentry
         </p>
       </div>
     </footer>

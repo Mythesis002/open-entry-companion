@@ -46,17 +46,23 @@ export const ReferenceImageUpload = ({
 
   const canGenerate = images.length >= template.referenceImagesRequired;
 
+  const defaultTips = [
+    'Use clear, well-lit photos',
+    'Front-facing photos work best',
+    'Avoid heavy filters or sunglasses'
+  ];
+
+  const tips = template.uploadTips?.length ? template.uploadTips : defaultTips;
+
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8">
-      {/* Header */}
       <div className="text-center space-y-3">
         <h2 className="text-3xl font-bold font-display">Upload Your Photos</h2>
         <p className="text-muted-foreground">
-          Add {template.referenceImagesRequired} reference photos of yourself for the AI to use
+          Add {template.referenceImagesRequired} reference {template.referenceImagesRequired === 1 ? 'photo' : 'photos'} for <span className="font-semibold text-foreground">{template.name}</span>
         </p>
       </div>
 
-      {/* Upload area */}
       <div className="grid grid-cols-2 gap-4">
         {Array.from({ length: template.referenceImagesRequired }).map((_, index) => (
           <div key={index} className="aspect-square relative">
@@ -101,17 +107,16 @@ export const ReferenceImageUpload = ({
         ))}
       </div>
 
-      {/* Tips */}
+      {/* Dynamic tips per template */}
       <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
         <h4 className="font-semibold text-sm">📸 Tips for best results:</h4>
         <ul className="text-sm text-muted-foreground space-y-1.5">
-          <li>• Use clear, well-lit photos of your face</li>
-          <li>• Front-facing photos work best</li>
-          <li>• Avoid photos with sunglasses or heavy filters</li>
+          {tips.map((tip, i) => (
+            <li key={i}>• {tip}</li>
+          ))}
         </ul>
       </div>
 
-      {/* Generate button */}
       <Button
         onClick={onGenerate}
         disabled={!canGenerate || isGenerating}
