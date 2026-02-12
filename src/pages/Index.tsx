@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Header } from '@/components/Header';
+import { RangoliDivider, PaisleyCorner, LotusIcon, DiyaIcon } from '@/components/IndianPatterns';
 import { MeshBackground } from '@/components/MeshBackground';
 import { TemplateCard } from '@/components/TemplateCard';
 import { ReferenceImageUpload } from '@/components/ReferenceImageUpload';
@@ -291,15 +292,22 @@ const Index = () => {
       return (
         <div className="w-full max-w-5xl mx-auto space-y-12">
           {/* Hero */}
-          <div className="text-center space-y-5 max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-pink-50 to-orange-50 border border-pink-100">
-              <span className="text-pink-500 text-sm">🔥</span>
+          <div className="text-center space-y-5 max-w-3xl mx-auto relative">
+            {/* Decorative corners */}
+            <PaisleyCorner className="absolute -top-8 -left-4 hidden lg:block" />
+            <PaisleyCorner className="absolute -top-8 -right-4 hidden lg:block" flip />
+
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-brand-saffron/10 to-brand-gold/10 border border-brand-gold/30">
+              <LotusIcon size={16} className="text-brand-maroon" />
               <span className="text-sm font-semibold text-foreground/80">AI-Powered Viral Reels</span>
             </div>
             
             <h1 className="text-4xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
               Create Viral Reels<br/>with AI
             </h1>
+            
+            <RangoliDivider className="max-w-xs mx-auto" />
+            
             <p className="text-base text-muted-foreground max-w-lg mx-auto">
               Pick a trending template, upload your photo, and get a ready-to-post reel in minutes.
             </p>
@@ -307,7 +315,10 @@ const Index = () => {
 
           {/* Template grid */}
           <div>
-            <h2 className="text-xl font-bold mb-6">🎬 Trending Templates</h2>
+            <h2 className="text-xl font-bold mb-6">
+              <DiyaIcon size={18} className="text-brand-saffron inline mr-2" />
+              Trending Templates
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {REEL_TEMPLATES.map(template => (
                 <TemplateCard 
