@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { RangoliDivider } from '@/components/IndianPatterns';
 
 const FAQS = [
   {
@@ -26,13 +27,14 @@ export function FAQSection() {
   return (
     <section id="faq" className="py-12 px-6 bg-background">
       <div className="max-w-xl mx-auto">
-        <h2 className="text-lg font-bold text-center mb-6">FAQ</h2>
+        <h2 className="text-lg font-bold text-center mb-2">FAQ</h2>
+        <RangoliDivider className="max-w-[200px] mx-auto mb-6" />
         
         <div className="space-y-2">
           {FAQS.map((faq, i) => (
             <div 
               key={i} 
-              className="border border-border rounded-lg overflow-hidden"
+              className="border border-brand-gold/20 rounded-lg overflow-hidden bg-accent/20"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
@@ -41,7 +43,7 @@ export function FAQSection() {
                 <span className="text-sm font-medium">{faq.q}</span>
                 <ChevronDown 
                   size={16} 
-                  className={`text-muted-foreground transition-transform ${openIndex === i ? 'rotate-180' : ''}`}
+                  className={`text-brand-gold transition-transform ${openIndex === i ? 'rotate-180' : ''}`}
                 />
               </button>
               {openIndex === i && (
