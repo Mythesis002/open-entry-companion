@@ -297,7 +297,7 @@ const Index = () => {
               <span className="text-sm font-semibold text-foreground/80">AI-Powered Viral Reels</span>
             </div>
             
-            <h1 className="text-4xl lg:text-6xl font-extrabold font-display leading-[1.1] tracking-tighter text-foreground">
+            <h1 className="text-4xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
               Create Viral Reels<br/>with AI
             </h1>
             <p className="text-base text-muted-foreground max-w-lg mx-auto">
