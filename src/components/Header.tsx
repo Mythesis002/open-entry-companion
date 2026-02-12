@@ -41,7 +41,7 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
 
   return (
     <>
-      <header className="fixed top-0 w-full h-14 lg:h-16 glass z-[100] border-b border-brand-gold/20 px-6 lg:px-12 flex items-center justify-between">
+      <header className="fixed top-0 w-full h-14 lg:h-16 glass z-[100] border-b border-transparent px-6 lg:px-12 flex items-center justify-between">
         <div 
           className="flex items-center gap-2 cursor-pointer" 
           onClick={() => { setView('studio'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -72,7 +72,7 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => navigate('/auth')} size="sm" className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold">
+            <Button onClick={() => navigate('/auth')} size="sm" className="h-9 px-4 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground text-xs font-semibold">
               Sign In
             </Button>
           )}
@@ -96,7 +96,7 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => navigate('/auth')} size="sm" className="h-8 px-3 bg-primary text-primary-foreground text-xs font-semibold">
+            <Button onClick={() => navigate('/auth')} size="sm" className="h-8 px-3 bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs font-semibold">
               Sign In
             </Button>
           )}

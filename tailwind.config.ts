@@ -19,17 +19,10 @@ export default {
       },
       colors: {
         mesh: {
-          saffron: "hsl(var(--mesh-saffron))",
-          maroon: "hsl(var(--mesh-maroon))",
-          gold: "hsl(var(--mesh-gold))",
-          deepred: "hsl(var(--mesh-deepred))",
-        },
-        brand: {
-          saffron: "hsl(var(--brand-saffron))",
-          maroon: "hsl(var(--brand-maroon))",
-          gold: "hsl(var(--brand-gold))",
-          deepred: "hsl(var(--brand-deepred))",
-          emerald: "hsl(var(--brand-emerald))",
+          cyan: "hsl(var(--mesh-cyan))",
+          amber: "hsl(var(--mesh-amber))",
+          fuchsia: "hsl(var(--mesh-fuchsia))",
+          indigo: "hsl(var(--mesh-indigo))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
