@@ -51,82 +51,68 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
     >
       {/* Video/Thumbnail Container */}
       <div className="aspect-[9/16] relative overflow-hidden">
-        {/* Preview Video - Always visible */}
+        {/* Thumbnail - always rendered */}
+        <img 
+          src={template.thumbnail} 
+          alt={template.name}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isHovered && template.previewVideo ? 'opacity-0' : 'opacity-100'}`}
+        />
+
+        {/* Preview Video - only visible on hover */}
         {template.previewVideo && (
           <video
             ref={videoRef}
             src={template.previewVideo}
-            poster={template.thumbnail}
             muted={isMuted}
             loop
             playsInline
-            autoPlay
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
-        
-        {/* Fallback Thumbnail only if no video */}
-        {!template.previewVideo && (
-          <img 
-            src={template.thumbnail} 
-            alt={template.name}
-            className="w-full h-full object-cover"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
           />
         )}
         
         {/* Top gradient for stats */}
-        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
         
         {/* Bottom gradient */}
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
         
         {/* Top Stats - Likes and Used */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Likes */}
-            <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
-              <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-              <span className="text-white text-xs font-medium">{formatCount(template.likes)}</span>
+        <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5">
+              <Heart className="w-3 h-3 text-red-400 fill-red-400" />
+              <span className="text-white text-[10px] font-medium">{formatCount(template.likes)}</span>
             </div>
-            
-            {/* Used Count */}
-            <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
-              <Users className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-white text-xs font-medium">{formatCount(template.usedCount)}</span>
+            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5">
+              <Users className="w-3 h-3 text-blue-400" />
+              <span className="text-white text-[10px] font-medium">{formatCount(template.usedCount)}</span>
             </div>
           </div>
+
+          {/* Mute toggle */}
+          {template.previewVideo && isHovered && (
+            <button
+              onClick={toggleMute}
+              className="w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
+            >
+              {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+            </button>
+          )}
         </div>
         
-        {/* Mute toggle */}
-        {template.previewVideo && (
-          <button
-            onClick={toggleMute}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
-          >
-            {isMuted ? (
-              <VolumeX className="w-4 h-4" />
-            ) : (
-              <Volume2 className="w-4 h-4" />
-            )}
-          </button>
-        )}
-        
         {/* Bottom - Price */}
-        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-          {/* Price Tag */}
-          <div className="flex items-center gap-0.5 bg-primary text-primary-foreground font-bold text-sm px-3 py-1.5 rounded-full">
-            <IndianRupee className="w-3.5 h-3.5" />
+        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+          <div className="flex items-center gap-0.5 bg-black/50 backdrop-blur-sm text-white font-bold text-xs px-2.5 py-1 rounded-full">
+            <IndianRupee className="w-3 h-3" />
             <span>{template.price}</span>
           </div>
           
-          {/* Use Template CTA */}
-          <div className="bg-white/90 backdrop-blur-sm text-black font-semibold text-xs px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="bg-white/90 backdrop-blur-sm text-black font-semibold text-[10px] px-2.5 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
             Use Template
           </div>
         </div>
       </div>
       
-      {/* Hover border glow effect */}
       <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-primary/30 transition-colors pointer-events-none" />
     </div>
   );
