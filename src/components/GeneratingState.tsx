@@ -8,7 +8,7 @@ interface GeneratingStateProps {
 
 export function GeneratingState({ template, images }: GeneratingStateProps) {
   const completedCount = images.filter(img => img.status === 'complete').length;
-  const totalCount = template.shots;
+  const totalCount = template.shots.length;
 
   return (
     <div className="flex flex-col items-center gap-8 max-w-sm w-full text-center py-8">
