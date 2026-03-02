@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { RangoliDivider, PaisleyCorner, LotusIcon, DiyaIcon } from '@/components/IndianPatterns';
 import { MeshBackground } from '@/components/MeshBackground';
 import { TemplateCard } from '@/components/TemplateCard';
-import { ReferenceImageUpload } from '@/components/ReferenceImageUpload';
+import { ReferenceInputCollector } from '@/components/ReferenceInputCollector';
 import { ImageReviewGrid } from '@/components/ImageReviewGrid';
 import { VideoComposing } from '@/components/VideoComposing';
 import { GeneratingState } from '@/components/GeneratingState';
@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { REEL_TEMPLATES } from '@/data/templates';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ReelTemplate, GeneratedImage } from '@/types';
+import type { ReelTemplate, GeneratedImage, CollectedInputs } from '@/types';
 
 type AppStatus = 'template' | 'upload' | 'generating' | 'review' | 'payment' | 'videos' | 'composing' | 'complete';
 
@@ -41,7 +41,7 @@ const Index = () => {
   
   // Reel creation state
   const [selectedTemplate, setSelectedTemplate] = useState<ReelTemplate | null>(null);
-  const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [collectedInputs, setCollectedInputs] = useState<CollectedInputs>({});
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [generatedVideos, setGeneratedVideos] = useState<string[]>([]);
   const [videoProgress, setVideoProgress] = useState<VideoProgress[]>([]);
@@ -50,23 +50,40 @@ const Index = () => {
   const [regeneratingImageId, setRegeneratingImageId] = useState<string | null>(null);
 
   const handleSelectTemplate = (template: ReelTemplate) => {
-    // Check if user needs to register
     if (!user || !isRegistered()) {
       setShowRegistration(true);
       return;
     }
     
     setSelectedTemplate(template);
-    setReferenceImages([]);
+    setCollectedInputs({});
     setGeneratedImages([]);
     setGeneratedVideos([]);
     setFinalVideoUrl(null);
     setAppStatus('upload');
   };
 
-  // Generate images for FREE (no payment needed)
+  // Build reference images for a specific shot based on its useInputs + presetReferenceImages
+  const buildShotReferences = (shot: typeof selectedTemplate extends null ? never : NonNullable<typeof selectedTemplate>['shots'][0]) => {
+    const refs: string[] = [];
+    
+    // Add user-provided inputs
+    for (const inputId of shot.useInputs) {
+      if (collectedInputs[inputId]) {
+        refs.push(collectedInputs[inputId]);
+      }
+    }
+    
+    // Add preset scene references
+    if (shot.presetReferenceImages) {
+      refs.push(...shot.presetReferenceImages);
+    }
+    
+    return refs;
+  };
+
   const handleGenerateClick = async () => {
-    if (!selectedTemplate || referenceImages.length < selectedTemplate.referenceImagesRequired) return;
+    if (!selectedTemplate) return;
     await startGeneration();
   };
 
@@ -75,68 +92,73 @@ const Index = () => {
 
     setAppStatus('generating');
     
-    // Initialize images as generating
-    const initialImages: GeneratedImage[] = selectedTemplate.prompts.map((prompt, i) => ({
-      id: `img-${i}`,
-      prompt,
+    // Initialize images from shots
+    const initialImages: GeneratedImage[] = selectedTemplate.shots.map((shot) => ({
+      id: `img-${shot.id}`,
+      shotId: shot.id,
+      prompt: shot.prompt,
       imageUrl: '',
       status: 'generating' as const
     }));
     setGeneratedImages(initialImages);
 
-    // Generate all images in parallel
-    const imagePromises = selectedTemplate.prompts.map(async (prompt, i) => {
+    // Generate all images in parallel - each shot gets its own references
+    const imagePromises = selectedTemplate.shots.map(async (shot, i) => {
       try {
+        const shotReferences = buildShotReferences(shot);
+        
         const response = await supabase.functions.invoke('generate-image', {
           body: {
-            prompt,
-            referenceImages: referenceImages
+            prompt: shot.prompt,
+            referenceImages: shotReferences
           }
         });
 
         if (response.error) throw response.error;
 
-        setGeneratedImages(prev => prev.map((img, idx) =>
-          idx === i ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+        setGeneratedImages(prev => prev.map((img) =>
+          img.shotId === shot.id ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
         ));
         
         return { success: true, index: i };
       } catch (error: unknown) {
-        console.error(`Error generating image ${i}:`, error);
+        console.error(`Error generating shot ${shot.id}:`, error);
         const message = error instanceof Error ? error.message : 'Generation failed';
         toast({
           variant: 'destructive',
-          title: `Image ${i + 1} Error`,
+          title: `Shot ${shot.id} Error`,
           description: message
         });
-        setGeneratedImages(prev => prev.map((img, idx) =>
-          idx === i ? { ...img, status: 'error' as const } : img
+        setGeneratedImages(prev => prev.map((img) =>
+          img.shotId === shot.id ? { ...img, status: 'error' as const } : img
         ));
         
         return { success: false, index: i };
       }
     });
 
-    // Wait for all images to complete
     await Promise.all(imagePromises);
-
-    // Move to review stage
     setAppStatus('review');
   };
 
   const handleRegenerateImage = async (imageId: string) => {
     if (!selectedTemplate) return;
     
-    const imageIndex = generatedImages.findIndex(img => img.id === imageId);
-    if (imageIndex === -1) return;
+    const image = generatedImages.find(img => img.id === imageId);
+    if (!image) return;
+
+    const shot = selectedTemplate.shots.find(s => s.id === image.shotId);
+    if (!shot) return;
 
     setRegeneratingImageId(imageId);
 
     try {
+      const shotReferences = buildShotReferences(shot);
+
       const response = await supabase.functions.invoke('generate-image', {
         body: {
-          prompt: selectedTemplate.prompts[imageIndex],
-          referenceImages: referenceImages
+          prompt: shot.prompt,
+          referenceImages: shotReferences
         }
       });
 
@@ -157,12 +179,10 @@ const Index = () => {
     setRegeneratingImageId(null);
   };
 
-  // Show payment QR before video generation
   const handleGenerateVideosClick = () => {
     setShowPaymentQR(true);
   };
 
-  // After payment, start video generation
   const handlePaymentComplete = async () => {
     setShowPaymentQR(false);
     await generateVideos();
@@ -173,36 +193,32 @@ const Index = () => {
 
     setAppStatus('videos');
 
-    // Initialize video progress tracking
     const initialProgress: VideoProgress[] = generatedImages.map((img, i) => ({
       id: `video-${i}`,
       status: 'pending' as const
     }));
     setVideoProgress(initialProgress);
 
-    // Generate all videos in parallel with individual progress tracking
     const videoPromises = generatedImages.map(async (img, i) => {
-      // Mark as generating
       setVideoProgress(prev => prev.map((v, idx) => 
         idx === i ? { ...v, status: 'generating' as const } : v
       ));
 
       try {
-        console.log(`Starting video generation ${i + 1}/${generatedImages.length}`);
-        
+        const shot = selectedTemplate.shots.find(s => s.id === img.shotId);
+        const videoPrompt = shot?.videoPrompt || '';
+
         const response = await supabase.functions.invoke('generate-video', {
           body: {
             imageUrl: img.imageUrl,
-            prompt: selectedTemplate.videoPrompts[i] || selectedTemplate.videoPrompts[0]
+            prompt: videoPrompt
           }
         });
 
         if (response.error) throw response.error;
         
         const videoUrl = response.data.videoUrl;
-        console.log(`Video ${i + 1} complete:`, videoUrl);
 
-        // Mark as complete with video URL
         setVideoProgress(prev => prev.map((v, idx) => 
           idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
         ));
@@ -211,7 +227,6 @@ const Index = () => {
       } catch (error: unknown) {
         console.error(`Error generating video ${i}:`, error);
         
-        // Mark as error
         setVideoProgress(prev => prev.map((v, idx) => 
           idx === i ? { ...v, status: 'error' as const } : v
         ));
@@ -222,18 +237,13 @@ const Index = () => {
           description: error instanceof Error ? error.message : 'Generation failed'
         });
 
-        // Use image as fallback
         return img.imageUrl;
       }
     });
 
-    // Wait for all videos to complete in parallel
     const videoUrls = await Promise.all(videoPromises);
-
     setGeneratedVideos(videoUrls);
     setAppStatus('composing');
-
-    // Compose final reel
     await composeReel(videoUrls);
   };
 
@@ -269,7 +279,7 @@ const Index = () => {
 
   const handleStartOver = () => {
     setSelectedTemplate(null);
-    setReferenceImages([]);
+    setCollectedInputs({});
     setGeneratedImages([]);
     setGeneratedVideos([]);
     setVideoProgress([]);
@@ -287,13 +297,10 @@ const Index = () => {
   };
 
   const renderContent = () => {
-    // Template selection
     if (appStatus === 'template') {
       return (
         <div className="w-full max-w-5xl mx-auto space-y-12">
-          {/* Hero */}
           <div className="text-center space-y-5 max-w-3xl mx-auto relative">
-            {/* Decorative corners */}
             <PaisleyCorner className="absolute -top-8 -left-4 hidden lg:block" />
             <PaisleyCorner className="absolute -top-8 -right-4 hidden lg:block" flip />
 
@@ -313,7 +320,6 @@ const Index = () => {
             </p>
           </div>
 
-          {/* Template grid */}
           <div>
             <h2 className="text-xl font-bold mb-6">
               <DiyaIcon size={18} className="text-brand-saffron inline mr-2" />
@@ -333,7 +339,6 @@ const Index = () => {
       );
     }
 
-    // Image upload stage
     if (appStatus === 'upload' && selectedTemplate) {
       return (
         <div className="w-full">
@@ -346,10 +351,10 @@ const Index = () => {
             Back to Templates
           </Button>
           
-          <ReferenceImageUpload
+          <ReferenceInputCollector
             template={selectedTemplate}
-            images={referenceImages}
-            onImagesChange={setReferenceImages}
+            collectedInputs={collectedInputs}
+            onInputsChange={setCollectedInputs}
             onGenerate={handleGenerateClick}
             isGenerating={false}
           />
@@ -357,7 +362,6 @@ const Index = () => {
       );
     }
 
-    // Generating images stage (FREE - no payment)
     if (appStatus === 'generating' && selectedTemplate) {
       return (
         <GeneratingState
@@ -367,7 +371,6 @@ const Index = () => {
       );
     }
 
-    // Image review stage - Pay to generate videos
     if (appStatus === 'review') {
       return (
         <ImageReviewGrid
@@ -380,7 +383,6 @@ const Index = () => {
       );
     }
 
-    // Video generation / composing / complete
     return (
       <VideoComposing
         status={appStatus as 'videos' | 'composing' | 'complete'}

@@ -1,3 +1,21 @@
+// Template Input - what the template needs from the user
+export interface TemplateInput {
+  id: string;
+  type: 'image' | 'text';
+  label: string;
+  description?: string;
+  required?: boolean;
+}
+
+// Template Shot - each shot defines its prompt and which inputs to use
+export interface TemplateShot {
+  id: number;
+  prompt: string;
+  videoPrompt: string;
+  useInputs: string[];           // IDs of user inputs to use as reference
+  presetReferenceImages?: string[]; // Pre-embedded reference images for this shot
+}
+
 // Template types
 export interface ReelTemplate {
   id: string;
@@ -5,20 +23,28 @@ export interface ReelTemplate {
   description: string;
   thumbnail: string;
   previewVideo?: string;
-  shots: number;
-  referenceImagesRequired: number;
+  shots: TemplateShot[];
+  inputs: TemplateInput[];       // Dynamic inputs the user must provide
   likes: number;
   usedCount: number;
   uploadTips?: string[];
-  prompts: string[];
-  videoPrompts: string[];
   creatomateTemplateId: string;
   price: number;
+  // Legacy fields for backward compat
+  referenceImagesRequired?: number;
+  prompts?: string[];
+  videoPrompts?: string[];
+}
+
+// Collected user inputs
+export interface CollectedInputs {
+  [inputId: string]: string; // inputId -> base64 image or text value
 }
 
 // Generated content
 export interface GeneratedImage {
   id: string;
+  shotId: number;
   prompt: string;
   imageUrl: string;
   status: 'generating' | 'complete' | 'error';
@@ -33,11 +59,11 @@ export interface GeneratedVideo {
 
 export interface ReelProject {
   templateId: string;
-  referenceImages: string[];
+  collectedInputs: CollectedInputs;
   generatedImages: GeneratedImage[];
   generatedVideos: GeneratedVideo[];
   finalVideoUrl: string | null;
-  status: 'images' | 'review' | 'videos' | 'composing' | 'complete';
+  status: 'inputs' | 'generating' | 'review' | 'payment' | 'videos' | 'composing' | 'complete';
 }
 
 // Legacy types (keeping for compatibility)
