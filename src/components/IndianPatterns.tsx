@@ -45,14 +45,25 @@ export function MandalaBorder({ className = '' }: { className?: string }) {
   );
 }
 
-export function LotusIcon({ className = '', size = 24 }: { className?: string; size?: number }) {
+export function IndianFlagIcon({ className = '', size = 24 }: { className?: string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M12 3C12 3 9 8 9 12C9 16 12 19 12 19C12 19 15 16 15 12C15 8 12 3 12 3Z" fill="currentColor" opacity="0.7" />
-      <path d="M12 7C12 7 6 10 6 14C6 18 12 19 12 19C12 19 4 16 5 12C6 8 12 7 12 7Z" fill="currentColor" opacity="0.5" />
-      <path d="M12 7C12 7 18 10 18 14C18 18 12 19 12 19C12 19 20 16 19 12C18 8 12 7 12 7Z" fill="currentColor" opacity="0.5" />
-      <path d="M12 9C12 9 3 12 3 15C3 18 12 19 12 19C12 19 1 15 3 12C5 9 12 9 12 9Z" fill="currentColor" opacity="0.3" />
-      <path d="M12 9C12 9 21 12 21 15C21 18 12 19 12 19C12 19 23 15 21 12C19 9 12 9 12 9Z" fill="currentColor" opacity="0.3" />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Saffron stripe */}
+      <rect x="2" y="4" width="20" height="5.33" rx="1" fill="#FF9933" />
+      {/* White stripe */}
+      <rect x="2" y="9.33" width="20" height="5.33" fill="#FFFFFF" />
+      {/* Green stripe */}
+      <rect x="2" y="14.67" width="20" height="5.33" rx="1" fill="#138808" />
+      {/* Ashoka Chakra */}
+      <circle cx="12" cy="12" r="2.4" fill="none" stroke="#000080" strokeWidth="0.5" />
+      <circle cx="12" cy="12" r="0.5" fill="#000080" />
+      {/* 24 spokes */}
+      {Array.from({ length: 24 }).map((_, i) => {
+        const angle = (i * 15 * Math.PI) / 180;
+        const x2 = 12 + 2.2 * Math.sin(angle);
+        const y2 = 12 - 2.2 * Math.cos(angle);
+        return <line key={i} x1="12" y1="12" x2={x2} y2={y2} stroke="#000080" strokeWidth="0.25" />;
+      })}
     </svg>
   );
 }
