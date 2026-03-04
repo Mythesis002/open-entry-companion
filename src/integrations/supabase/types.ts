@@ -95,6 +95,33 @@ export type Database = {
         }
         Relationships: []
       }
+      templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_trending: boolean
+          likes_count: number
+          updated_at: string
+          used_count: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_trending?: boolean
+          likes_count?: number
+          updated_at?: string
+          used_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_trending?: boolean
+          likes_count?: number
+          updated_at?: string
+          used_count?: number
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           created_at: string
@@ -124,6 +151,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_likes: {
+        Row: {
+          created_at: string
+          id: string
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_likes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
