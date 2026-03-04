@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Header } from '@/components/Header';
-import { RangoliDivider, PaisleyCorner, LotusIcon, DiyaIcon } from '@/components/IndianPatterns';
+import { RangoliDivider, PaisleyCorner, IndianFlagIcon, DiyaIcon } from '@/components/IndianPatterns';
 import { MeshBackground } from '@/components/MeshBackground';
 import { TemplateCard } from '@/components/TemplateCard';
 import { ReferenceInputCollector } from '@/components/ReferenceInputCollector';
@@ -305,7 +305,7 @@ const Index = () => {
             <PaisleyCorner className="absolute -top-8 -right-4 hidden lg:block" flip />
 
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-brand-saffron/10 to-brand-gold/10 border border-brand-gold/30">
-              <LotusIcon size={16} className="text-brand-maroon" />
+              <IndianFlagIcon size={16} />
               <span className="text-sm font-semibold text-foreground/80">From India to World</span>
             </div>
             
