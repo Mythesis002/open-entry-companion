@@ -34,11 +34,11 @@ const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [showPaymentQR, setShowPaymentQR] = useState(false);
-  
+
   const { user } = useAuth();
   const { isRegistered, refetch } = useUserCredits();
   const { toast } = useToast();
-  
+
   // Reel creation state
   const [selectedTemplate, setSelectedTemplate] = useState<ReelTemplate | null>(null);
   const [collectedInputs, setCollectedInputs] = useState<CollectedInputs>({});
@@ -54,7 +54,7 @@ const Index = () => {
       setShowRegistration(true);
       return;
     }
-    
+
     setSelectedTemplate(template);
     setCollectedInputs({});
     setGeneratedImages([]);
@@ -66,19 +66,19 @@ const Index = () => {
   // Build reference images for a specific shot based on its useInputs + presetReferenceImages
   const buildShotReferences = (shot: typeof selectedTemplate extends null ? never : NonNullable<typeof selectedTemplate>['shots'][0]) => {
     const refs: string[] = [];
-    
+
     // Add user-provided inputs
     for (const inputId of shot.useInputs) {
       if (collectedInputs[inputId]) {
         refs.push(collectedInputs[inputId]);
       }
     }
-    
+
     // Add preset scene references
     if (shot.presetReferenceImages) {
       refs.push(...shot.presetReferenceImages);
     }
-    
+
     return refs;
   };
 
@@ -91,7 +91,7 @@ const Index = () => {
     if (!selectedTemplate) return;
 
     setAppStatus('generating');
-    
+
     // Initialize images from shots
     const initialImages: GeneratedImage[] = selectedTemplate.shots.map((shot) => ({
       id: `img-${shot.id}`,
@@ -106,7 +106,7 @@ const Index = () => {
     const imagePromises = selectedTemplate.shots.map(async (shot, i) => {
       try {
         const shotReferences = buildShotReferences(shot);
-        
+
         const response = await supabase.functions.invoke('generate-image', {
           body: {
             prompt: shot.prompt,
@@ -116,10 +116,10 @@ const Index = () => {
 
         if (response.error) throw response.error;
 
-        setGeneratedImages(prev => prev.map((img) =>
-          img.shotId === shot.id ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+        setGeneratedImages((prev) => prev.map((img) =>
+        img.shotId === shot.id ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
         ));
-        
+
         return { success: true, index: i };
       } catch (error: unknown) {
         console.error(`Error generating shot ${shot.id}:`, error);
@@ -129,10 +129,10 @@ const Index = () => {
           title: `Shot ${shot.id} Error`,
           description: message
         });
-        setGeneratedImages(prev => prev.map((img) =>
-          img.shotId === shot.id ? { ...img, status: 'error' as const } : img
+        setGeneratedImages((prev) => prev.map((img) =>
+        img.shotId === shot.id ? { ...img, status: 'error' as const } : img
         ));
-        
+
         return { success: false, index: i };
       }
     });
@@ -143,11 +143,11 @@ const Index = () => {
 
   const handleRegenerateImage = async (imageId: string) => {
     if (!selectedTemplate) return;
-    
-    const image = generatedImages.find(img => img.id === imageId);
+
+    const image = generatedImages.find((img) => img.id === imageId);
     if (!image) return;
 
-    const shot = selectedTemplate.shots.find(s => s.id === image.shotId);
+    const shot = selectedTemplate.shots.find((s) => s.id === image.shotId);
     if (!shot) return;
 
     setRegeneratingImageId(imageId);
@@ -164,8 +164,8 @@ const Index = () => {
 
       if (response.error) throw response.error;
 
-      setGeneratedImages(prev => prev.map(img =>
-        img.id === imageId ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+      setGeneratedImages((prev) => prev.map((img) =>
+      img.id === imageId ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
       ));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Regeneration failed';
@@ -200,12 +200,12 @@ const Index = () => {
     setVideoProgress(initialProgress);
 
     const videoPromises = generatedImages.map(async (img, i) => {
-      setVideoProgress(prev => prev.map((v, idx) => 
-        idx === i ? { ...v, status: 'generating' as const } : v
+      setVideoProgress((prev) => prev.map((v, idx) =>
+      idx === i ? { ...v, status: 'generating' as const } : v
       ));
 
       try {
-        const shot = selectedTemplate.shots.find(s => s.id === img.shotId);
+        const shot = selectedTemplate.shots.find((s) => s.id === img.shotId);
         const videoPrompt = shot?.videoPrompt || '';
 
         const response = await supabase.functions.invoke('generate-video', {
@@ -216,19 +216,19 @@ const Index = () => {
         });
 
         if (response.error) throw response.error;
-        
+
         const videoUrl = response.data.videoUrl;
 
-        setVideoProgress(prev => prev.map((v, idx) => 
-          idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
+        setVideoProgress((prev) => prev.map((v, idx) =>
+        idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
         ));
 
         return videoUrl;
       } catch (error: unknown) {
         console.error(`Error generating video ${i}:`, error);
-        
-        setVideoProgress(prev => prev.map((v, idx) => 
-          idx === i ? { ...v, status: 'error' as const } : v
+
+        setVideoProgress((prev) => prev.map((v, idx) =>
+        idx === i ? { ...v, status: 'error' as const } : v
         ));
 
         toast({
@@ -306,11 +306,11 @@ const Index = () => {
 
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-brand-saffron/10 to-brand-gold/10 border border-brand-gold/30">
               <LotusIcon size={16} className="text-brand-maroon" />
-              <span className="text-sm font-semibold text-foreground/80">AI-Powered Viral Reels</span>
+              <span className="text-sm font-semibold text-foreground/80">From India to World</span>
             </div>
             
             <h1 className="text-4xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Create Viral Reels<br/>with AI
+              Create Viral Reels<br />with AI
             </h1>
             
             <RangoliDivider className="max-w-xs mx-auto" />
@@ -326,17 +326,17 @@ const Index = () => {
               Trending Templates
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {REEL_TEMPLATES.map(template => (
-                <TemplateCard 
-                  key={template.id} 
-                  template={template} 
-                  onSelect={handleSelectTemplate}
-                />
-              ))}
+              {REEL_TEMPLATES.map((template) =>
+              <TemplateCard
+                key={template.id}
+                template={template}
+                onSelect={handleSelectTemplate} />
+
+              )}
             </div>
           </div>
-        </div>
-      );
+        </div>);
+
     }
 
     if (appStatus === 'upload' && selectedTemplate) {
@@ -345,8 +345,8 @@ const Index = () => {
           <Button
             variant="ghost"
             onClick={handleStartOver}
-            className="mb-6 gap-2"
-          >
+            className="mb-6 gap-2">
+            
             <ArrowLeft className="w-4 h-4" />
             Back to Templates
           </Button>
@@ -356,19 +356,19 @@ const Index = () => {
             collectedInputs={collectedInputs}
             onInputsChange={setCollectedInputs}
             onGenerate={handleGenerateClick}
-            isGenerating={false}
-          />
-        </div>
-      );
+            isGenerating={false} />
+          
+        </div>);
+
     }
 
     if (appStatus === 'generating' && selectedTemplate) {
       return (
         <GeneratingState
           template={selectedTemplate}
-          images={generatedImages}
-        />
-      );
+          images={generatedImages} />);
+
+
     }
 
     if (appStatus === 'review') {
@@ -378,9 +378,9 @@ const Index = () => {
           onRegenerate={handleRegenerateImage}
           onGenerateVideos={handleGenerateVideosClick}
           regeneratingId={regeneratingImageId}
-          isGeneratingVideos={false}
-        />
-      );
+          isGeneratingVideos={false} />);
+
+
     }
 
     return (
@@ -388,21 +388,21 @@ const Index = () => {
         status={appStatus as 'videos' | 'composing' | 'complete'}
         finalVideoUrl={finalVideoUrl}
         onStartOver={handleStartOver}
-        videoProgress={videoProgress}
-      />
-    );
+        videoProgress={videoProgress} />);
+
+
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-hidden relative">
       <MeshBackground />
       
-      <Header 
+      <Header
         view="studio"
         setView={() => {}}
-        isMenuOpen={isMenuOpen} 
-        setIsMenuOpen={setIsMenuOpen} 
-      />
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen} />
+      
 
       <main className="flex-1 pt-14 lg:pt-16 w-full relative z-10">
         <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up max-w-[1400px] mx-auto">
@@ -416,22 +416,22 @@ const Index = () => {
 
       <Footer />
 
-      <RegistrationModal 
+      <RegistrationModal
         isOpen={showRegistration}
         onClose={() => setShowRegistration(false)}
-        onComplete={handleRegistrationComplete}
-      />
+        onComplete={handleRegistrationComplete} />
+      
 
-      {selectedTemplate && (
-        <PaymentQRModal
-          isOpen={showPaymentQR}
-          onClose={() => setShowPaymentQR(false)}
-          onPaymentComplete={handlePaymentComplete}
-          template={selectedTemplate}
-        />
-      )}
-    </div>
-  );
+      {selectedTemplate &&
+      <PaymentQRModal
+        isOpen={showPaymentQR}
+        onClose={() => setShowPaymentQR(false)}
+        onPaymentComplete={handlePaymentComplete}
+        template={selectedTemplate} />
+
+      }
+    </div>);
+
 };
 
 export default Index;
