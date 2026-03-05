@@ -44,7 +44,7 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
       'Avoid photos with busy backgrounds'
     ],
     creatomateTemplateId: '70f6563a-d3ce-47f5-90a0-34d40663881e',
-    price: 29
+    price: 1
   }
 ];
 export const getTemplateById = (id: string): ReelTemplate | undefined => {
