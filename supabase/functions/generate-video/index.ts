@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -14,26 +14,25 @@ serve(async (req) => {
     const { imageUrl, prompt } = await req.json();
     
     console.log('Generating video from image using fal.ai LTX-2-19B');
-    console.log('Image URL:', imageUrl);
-    console.log('Prompt:', prompt?.substring(0, 100) + '...');
+    console.log('Prompt:', prompt?.substring(0, 100));
 
     const FAL_KEY = Deno.env.get('FAL_KEY');
     if (!FAL_KEY) {
       throw new Error('FAL_KEY is not configured');
     }
 
-    // Step 1: Submit to fal.ai queue
-    const submitResponse = await fetch('https://queue.fal.run/fal-ai/ltx-2-19b/image-to-video', {
+    const modelId = 'fal-ai/ltx-2-19b/image-to-video';
+
+    // Step 1: Submit to fal.ai queue (REST API body is flat, no "input" wrapper)
+    const submitResponse = await fetch(`https://queue.fal.run/${modelId}`, {
       method: 'POST',
       headers: {
         'Authorization': `Key ${FAL_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        input: {
-          prompt: prompt,
-          image_url: imageUrl
-        }
+        prompt: prompt || '',
+        image_url: imageUrl
       })
     });
 
@@ -44,23 +43,26 @@ serve(async (req) => {
     }
 
     const submitData = await submitResponse.json();
-    console.log('fal.ai submit response:', JSON.stringify(submitData));
+    console.log('fal.ai submit response keys:', Object.keys(submitData));
+
+    // Check if result came back directly (synchronous)
+    if (submitData?.video?.url) {
+      return new Response(
+        JSON.stringify({ videoUrl: submitData.video.url }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const requestId = submitData.request_id;
     if (!requestId) {
-      // Check if result came back directly
-      const videoUrl = submitData?.video?.url || submitData?.output?.video?.url;
-      if (videoUrl) {
-        return new Response(
-          JSON.stringify({ videoUrl }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      console.error('Full submit response:', JSON.stringify(submitData));
       throw new Error('No request_id in fal.ai response');
     }
 
+    console.log('Got request_id:', requestId);
+
     // Step 2: Poll for completion
-    const maxAttempts = 120; // 4 minutes
+    const maxAttempts = 120;
     let attempts = 0;
 
     while (attempts < maxAttempts) {
@@ -69,14 +71,16 @@ serve(async (req) => {
 
       try {
         const statusResponse = await fetch(
-          `https://queue.fal.run/fal-ai/ltx-2-19b/image-to-video/requests/${requestId}/status`,
+          `https://queue.fal.run/${modelId}/requests/${requestId}/status`,
           {
+            method: 'GET',
             headers: { 'Authorization': `Key ${FAL_KEY}` }
           }
         );
 
         if (!statusResponse.ok) {
-          console.error(`Poll error ${statusResponse.status}`);
+          const errText = await statusResponse.text();
+          console.error(`Poll error ${statusResponse.status}: ${errText}`);
           continue;
         }
 
@@ -86,8 +90,9 @@ serve(async (req) => {
         if (statusData.status === 'COMPLETED') {
           // Fetch the result
           const resultResponse = await fetch(
-            `https://queue.fal.run/fal-ai/ltx-2-19b/image-to-video/requests/${requestId}`,
+            `https://queue.fal.run/${modelId}/requests/${requestId}`,
             {
+              method: 'GET',
               headers: { 'Authorization': `Key ${FAL_KEY}` }
             }
           );
@@ -97,10 +102,11 @@ serve(async (req) => {
           }
 
           const resultData = await resultResponse.json();
-          console.log('fal.ai result:', JSON.stringify(resultData));
+          console.log('fal.ai result keys:', Object.keys(resultData));
 
           const videoUrl = resultData?.video?.url;
           if (!videoUrl) {
+            console.error('Result structure:', JSON.stringify(resultData).substring(0, 500));
             throw new Error('No video URL in fal.ai result');
           }
 
@@ -111,15 +117,13 @@ serve(async (req) => {
         }
 
         if (statusData.status === 'FAILED') {
-          throw new Error('fal.ai video generation failed: ' + (statusData.error || 'Unknown error'));
+          throw new Error('fal.ai generation failed: ' + (statusData.error || 'Unknown error'));
         }
-
-        // IN_QUEUE, IN_PROGRESS - continue polling
       } catch (pollError) {
-        console.error(`Polling error attempt ${attempts}:`, pollError);
         if (attempts >= maxAttempts - 5) {
           throw pollError;
         }
+        console.error(`Polling error attempt ${attempts}:`, pollError);
       }
     }
 
