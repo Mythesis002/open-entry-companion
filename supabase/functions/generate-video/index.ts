@@ -13,96 +13,117 @@ serve(async (req) => {
   try {
     const { imageUrl, prompt } = await req.json();
     
-    console.log('Generating video from image using Veo 3');
+    console.log('Generating video from image using fal.ai LTX-2-19B');
     console.log('Image URL:', imageUrl);
     console.log('Prompt:', prompt?.substring(0, 100) + '...');
 
-    const VEO_API_KEY = Deno.env.get('VEO_API_KEY');
-    if (!VEO_API_KEY) {
-      throw new Error('VEO_API_KEY is not configured');
+    const FAL_KEY = Deno.env.get('FAL_KEY');
+    if (!FAL_KEY) {
+      throw new Error('FAL_KEY is not configured');
     }
 
-    // Step 1: Create video generation task with Veo 3
-    const createResponse = await fetch('https://api.aimlapi.com/v2/generate/video/google/generation', {
+    // Step 1: Submit to fal.ai queue
+    const submitResponse = await fetch('https://queue.fal.run/fal-ai/ltx-2-19b/image-to-video', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${VEO_API_KEY}`,
+        'Authorization': `Key ${FAL_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'veo-3',
-        prompt: prompt,
-        image_url: imageUrl,
-        aspect_ratio: '9:16',
-        duration: 5
+        input: {
+          prompt: prompt,
+          image_url: imageUrl
+        }
       })
     });
 
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      console.error('Veo 3 create error:', createResponse.status, errorText);
-      
-      // Try alternative endpoint format
-      const altResponse = await fetch('https://api.aimlapi.com/v2/video/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${VEO_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'google/veo-3.0-i2v',
-          prompt: prompt,
-          image_url: imageUrl,
-          aspect_ratio: '9:16',
-          duration: 5
-        })
-      });
-
-      if (!altResponse.ok) {
-        const altError = await altResponse.text();
-        console.error('Alternative endpoint error:', altResponse.status, altError);
-        throw new Error(`Video generation failed: ${altError}`);
-      }
-
-      const altData = await altResponse.json();
-      console.log('Alternative endpoint response:', JSON.stringify(altData));
-      
-      // Handle async generation with polling
-      const generationId = altData.id || altData.generation_id;
-      if (generationId) {
-        return await pollForCompletion(generationId, VEO_API_KEY);
-      }
-      
-      // Direct video URL returned
-      if (altData.video_url || altData.output?.video_url) {
-        return new Response(
-          JSON.stringify({ videoUrl: altData.video_url || altData.output?.video_url }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error('Unexpected response format from video API');
+    if (!submitResponse.ok) {
+      const errorText = await submitResponse.text();
+      console.error('fal.ai submit error:', submitResponse.status, errorText);
+      throw new Error(`fal.ai submit failed: ${submitResponse.status} - ${errorText}`);
     }
 
-    const createData = await createResponse.json();
-    console.log('Veo 3 create response:', JSON.stringify(createData));
+    const submitData = await submitResponse.json();
+    console.log('fal.ai submit response:', JSON.stringify(submitData));
 
-    // Get generation ID for polling
-    const generationId = createData.id || createData.generation_id || createData.task_id;
-    
-    if (!generationId) {
-      // Direct video URL returned (some APIs return immediately)
-      if (createData.video_url || createData.output?.video_url || createData.url) {
+    const requestId = submitData.request_id;
+    if (!requestId) {
+      // Check if result came back directly
+      const videoUrl = submitData?.video?.url || submitData?.output?.video?.url;
+      if (videoUrl) {
         return new Response(
-          JSON.stringify({ videoUrl: createData.video_url || createData.output?.video_url || createData.url }),
+          JSON.stringify({ videoUrl }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      throw new Error('No generation ID or video URL in response');
+      throw new Error('No request_id in fal.ai response');
     }
 
     // Step 2: Poll for completion
-    return await pollForCompletion(generationId, VEO_API_KEY);
+    const maxAttempts = 120; // 4 minutes
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      attempts++;
+
+      try {
+        const statusResponse = await fetch(
+          `https://queue.fal.run/fal-ai/ltx-2-19b/image-to-video/requests/${requestId}/status`,
+          {
+            headers: { 'Authorization': `Key ${FAL_KEY}` }
+          }
+        );
+
+        if (!statusResponse.ok) {
+          console.error(`Poll error ${statusResponse.status}`);
+          continue;
+        }
+
+        const statusData = await statusResponse.json();
+        console.log(`Attempt ${attempts} status:`, statusData.status);
+
+        if (statusData.status === 'COMPLETED') {
+          // Fetch the result
+          const resultResponse = await fetch(
+            `https://queue.fal.run/fal-ai/ltx-2-19b/image-to-video/requests/${requestId}`,
+            {
+              headers: { 'Authorization': `Key ${FAL_KEY}` }
+            }
+          );
+
+          if (!resultResponse.ok) {
+            throw new Error('Failed to fetch result');
+          }
+
+          const resultData = await resultResponse.json();
+          console.log('fal.ai result:', JSON.stringify(resultData));
+
+          const videoUrl = resultData?.video?.url;
+          if (!videoUrl) {
+            throw new Error('No video URL in fal.ai result');
+          }
+
+          return new Response(
+            JSON.stringify({ videoUrl }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (statusData.status === 'FAILED') {
+          throw new Error('fal.ai video generation failed: ' + (statusData.error || 'Unknown error'));
+        }
+
+        // IN_QUEUE, IN_PROGRESS - continue polling
+      } catch (pollError) {
+        console.error(`Polling error attempt ${attempts}:`, pollError);
+        if (attempts >= maxAttempts - 5) {
+          throw pollError;
+        }
+      }
+    }
+
+    throw new Error('Video generation timeout - please try again');
 
   } catch (error: unknown) {
     console.error('Error generating video:', error);
@@ -113,69 +134,3 @@ serve(async (req) => {
     );
   }
 });
-
-async function pollForCompletion(generationId: string, apiKey: string): Promise<Response> {
-  const maxAttempts = 120; // 4 minutes max (2 second intervals)
-  let attempts = 0;
-
-  console.log(`Polling for video generation: ${generationId}`);
-
-  while (attempts < maxAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    attempts++;
-
-    try {
-      // Try multiple status endpoint formats
-      const statusUrls = [
-        `https://api.aimlapi.com/v2/generate/video/google/generation/${generationId}`,
-        `https://api.aimlapi.com/v2/video/generations/${generationId}`,
-        `https://api.aimlapi.com/v2/generations/${generationId}`
-      ];
-
-      for (const statusUrl of statusUrls) {
-        const statusResponse = await fetch(statusUrl, {
-          headers: { 'Authorization': `Bearer ${apiKey}` }
-        });
-
-        if (!statusResponse.ok) continue;
-
-        const statusData = await statusResponse.json();
-        console.log(`Attempt ${attempts} status:`, statusData.status || statusData.state);
-
-        const status = statusData.status || statusData.state;
-
-        // Check for completion
-        if (status === 'completed' || status === 'succeeded' || status === 'success') {
-          const videoUrl = statusData.video_url || statusData.output?.video_url || 
-                          statusData.result?.video_url || statusData.url ||
-                          statusData.output?.url || statusData.result?.url;
-          
-          if (videoUrl) {
-            console.log('Video generation complete:', videoUrl);
-            return new Response(
-              JSON.stringify({ videoUrl }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-
-        // Check for failure
-        if (status === 'failed' || status === 'error') {
-          throw new Error(statusData.error || statusData.message || 'Video generation failed');
-        }
-
-        // Still processing, continue polling
-        if (status === 'processing' || status === 'pending' || status === 'queued' || status === 'in_progress') {
-          break; // Found the right endpoint, continue waiting
-        }
-      }
-    } catch (pollError) {
-      console.error(`Polling error attempt ${attempts}:`, pollError);
-      if (attempts >= maxAttempts - 5) {
-        throw pollError;
-      }
-    }
-  }
-
-  throw new Error('Video generation timeout - please try again');
-}
