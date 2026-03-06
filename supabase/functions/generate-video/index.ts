@@ -27,7 +27,6 @@ serve(async (req) => {
 
     const modelId = 'fal-ai/ltx-2-19b/image-to-video';
 
-    // Submit to fal.ai queue — return immediately with request_id
     const submitResponse = await fetch(`https://queue.fal.run/${modelId}`, {
       method: 'POST',
       headers: {
@@ -53,9 +52,8 @@ serve(async (req) => {
     const submitData = await submitResponse.json();
     console.log('fal.ai submit response:', JSON.stringify(submitData));
 
-    // Check if result came back directly (synchronous)
+    // Check if result came back directly
     if (submitData?.video?.url) {
-      console.log('Got synchronous video result');
       return new Response(
         JSON.stringify({ videoUrl: submitData.video.url, status: 'complete' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -68,10 +66,17 @@ serve(async (req) => {
     }
 
     console.log('Job submitted, request_id:', requestId);
+    console.log('status_url:', submitData.status_url);
+    console.log('response_url:', submitData.response_url);
 
-    // Return request_id immediately — client will poll check-video-status
+    // Return request_id AND the actual URLs from fal.ai
     return new Response(
-      JSON.stringify({ requestId, status: 'processing' }),
+      JSON.stringify({
+        requestId,
+        statusUrl: submitData.status_url,
+        responseUrl: submitData.response_url,
+        status: 'processing'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

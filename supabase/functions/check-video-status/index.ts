@@ -11,10 +11,10 @@ serve(async (req) => {
   }
 
   try {
-    const { requestId } = await req.json();
+    const { requestId, statusUrl, responseUrl } = await req.json();
 
-    if (!requestId) {
-      throw new Error('requestId is required');
+    if (!requestId || !statusUrl || !responseUrl) {
+      throw new Error('requestId, statusUrl, and responseUrl are required');
     }
 
     const FAL_KEY = Deno.env.get('FAL_KEY');
@@ -22,44 +22,35 @@ serve(async (req) => {
       throw new Error('FAL_KEY is not configured');
     }
 
-    const modelId = 'fal-ai/ltx-2-19b/image-to-video';
-
-    // Check status
-    const statusResponse = await fetch(
-      `https://queue.fal.run/${modelId}/requests/${requestId}/status`,
-      {
-        method: 'GET',
-        headers: { 'Authorization': `Key ${FAL_KEY}` }
-      }
-    );
+    // Use the exact status URL provided by fal.ai
+    const statusResponse = await fetch(statusUrl, {
+      method: 'GET',
+      headers: { 'Authorization': `Key ${FAL_KEY}` }
+    });
 
     if (!statusResponse.ok) {
       const errText = await statusResponse.text();
       console.error(`Status check error ${statusResponse.status}: ${errText}`);
-      
-      // If 404, the request may have expired
+
       if (statusResponse.status === 404) {
         return new Response(
           JSON.stringify({ status: 'failed', error: 'Request not found or expired' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      throw new Error(`Status check failed: ${statusResponse.status}`);
+
+      throw new Error(`Status check failed: ${statusResponse.status} - ${errText}`);
     }
 
     const statusData = await statusResponse.json();
-    console.log('Status:', statusData.status, 'for request:', requestId);
+    console.log('Status for', requestId, ':', statusData.status);
 
     if (statusData.status === 'COMPLETED') {
-      // Fetch the result
-      const resultResponse = await fetch(
-        `https://queue.fal.run/${modelId}/requests/${requestId}`,
-        {
-          method: 'GET',
-          headers: { 'Authorization': `Key ${FAL_KEY}` }
-        }
-      );
+      // Fetch the actual result using the response URL
+      const resultResponse = await fetch(responseUrl, {
+        method: 'GET',
+        headers: { 'Authorization': `Key ${FAL_KEY}` }
+      });
 
       if (!resultResponse.ok) {
         const errText = await resultResponse.text();
@@ -70,6 +61,7 @@ serve(async (req) => {
       const videoUrl = resultData?.video?.url;
 
       if (!videoUrl) {
+        console.error('Result structure:', JSON.stringify(resultData).substring(0, 500));
         throw new Error('No video URL in result');
       }
 
@@ -87,7 +79,7 @@ serve(async (req) => {
       );
     }
 
-    // Still processing (IN_QUEUE or IN_PROGRESS)
+    // Still processing
     return new Response(
       JSON.stringify({ status: 'processing', queuePosition: statusData.queue_position }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
