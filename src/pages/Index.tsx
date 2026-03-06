@@ -189,14 +189,14 @@ const Index = () => {
   };
 
   // Helper: poll a single video until complete or failed
-  const pollVideoStatus = async (requestId: string, index: number): Promise<string | null> => {
+  const pollVideoStatus = async (requestId: string, statusUrl: string, responseUrl: string, index: number): Promise<string | null> => {
     const maxAttempts = 120; // 4 minutes at 2s intervals
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       try {
         const res = await supabase.functions.invoke('check-video-status', {
-          body: { requestId }
+          body: { requestId, statusUrl, responseUrl }
         });
 
         if (res.error) {
@@ -217,7 +217,7 @@ const Index = () => {
         console.error(`Poll attempt ${attempt} error:`, err);
       }
     }
-    throw new Error('Video generation timed out after 4 minutes');
+    throw new Error('Video generation timed out after 6 minutes');
   };
 
   const generateVideos = async () => {
