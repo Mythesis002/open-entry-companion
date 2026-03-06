@@ -188,6 +188,38 @@ const Index = () => {
     await generateVideos();
   };
 
+  // Helper: poll a single video until complete or failed
+  const pollVideoStatus = async (requestId: string, statusUrl: string, responseUrl: string, index: number): Promise<string | null> => {
+    const maxAttempts = 120; // 4 minutes at 2s intervals
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      try {
+        const res = await supabase.functions.invoke('check-video-status', {
+          body: { requestId, statusUrl, responseUrl }
+        });
+
+        if (res.error) {
+          console.error(`Poll error for video ${index}:`, res.error);
+          continue;
+        }
+
+        const data = res.data;
+        if (data?.status === 'complete' && data?.videoUrl) {
+          return data.videoUrl;
+        }
+        if (data?.status === 'failed') {
+          throw new Error(data.error || 'Video generation failed');
+        }
+        // still processing — continue polling
+      } catch (err) {
+        if (attempt >= maxAttempts - 3) throw err;
+        console.error(`Poll attempt ${attempt} error:`, err);
+      }
+    }
+    throw new Error('Video generation timed out after 6 minutes');
+  };
+
   const generateVideos = async () => {
     if (!selectedTemplate) return;
 
@@ -199,58 +231,60 @@ const Index = () => {
     }));
     setVideoProgress(initialProgress);
 
-    const videoPromises = generatedImages.map(async (img, i) => {
-      setVideoProgress((prev) => prev.map((v, idx) =>
-      idx === i ? { ...v, status: 'generating' as const } : v
+    // Step 1: Submit all video jobs in parallel
+    const jobPromises = generatedImages.map(async (img, i) => {
+      setVideoProgress(prev => prev.map((v, idx) =>
+        idx === i ? { ...v, status: 'generating' as const } : v
       ));
 
       try {
-        const shot = selectedTemplate.shots.find((s) => s.id === img.shotId);
+        const shot = selectedTemplate.shots.find(s => s.id === img.shotId);
         const videoPrompt = shot?.videoPrompt || '';
 
         const response = await supabase.functions.invoke('generate-video', {
-          body: {
-            imageUrl: img.imageUrl,
-            prompt: videoPrompt
-          }
+          body: { imageUrl: img.imageUrl, prompt: videoPrompt }
         });
 
         if (response.error) throw response.error;
+        if (response.data?.error) throw new Error(response.data.error);
+
+        // If completed synchronously
+        if (response.data?.status === 'complete' && response.data?.videoUrl) {
+          setVideoProgress(prev => prev.map((v, idx) =>
+            idx === i ? { ...v, status: 'complete' as const, videoUrl: response.data.videoUrl } : v
+          ));
+          return response.data.videoUrl as string;
+        }
+
+        const requestId = response.data?.requestId;
+        const statusUrl = response.data?.statusUrl;
+        const responseUrl = response.data?.responseUrl;
+        if (!requestId || !statusUrl || !responseUrl) throw new Error('No requestId/URLs returned from submit');
+
+        // Step 2: Poll for this video
+        const videoUrl = await pollVideoStatus(requestId, statusUrl, responseUrl, i);
         
-        if (response.data?.error) {
-          throw new Error(response.data.error);
-        }
-
-        const videoUrl = response.data.videoUrl;
-        if (!videoUrl) {
-          throw new Error('No video URL returned');
-        }
-
-        setVideoProgress((prev) => prev.map((v, idx) =>
-        idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
+        setVideoProgress(prev => prev.map((v, idx) =>
+          idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
         ));
-
         return videoUrl;
       } catch (error: unknown) {
         console.error(`Error generating video ${i}:`, error);
-
-        setVideoProgress((prev) => prev.map((v, idx) =>
-        idx === i ? { ...v, status: 'error' as const } : v
+        setVideoProgress(prev => prev.map((v, idx) =>
+          idx === i ? { ...v, status: 'error' as const } : v
         ));
-
         toast({
           variant: 'destructive',
           title: `Video ${i + 1} Error`,
           description: error instanceof Error ? error.message : 'Generation failed'
         });
-
-        return null; // Return null instead of image URL
+        return null;
       }
     });
 
-    const results = await Promise.all(videoPromises);
+    const results = await Promise.all(jobPromises);
     const validVideoUrls = results.filter((url): url is string => url !== null);
-    
+
     if (validVideoUrls.length === 0) {
       toast({
         variant: 'destructive',
