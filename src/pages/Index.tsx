@@ -257,10 +257,12 @@ const Index = () => {
         }
 
         const requestId = response.data?.requestId;
-        if (!requestId) throw new Error('No requestId returned from submit');
+        const statusUrl = response.data?.statusUrl;
+        const responseUrl = response.data?.responseUrl;
+        if (!requestId || !statusUrl || !responseUrl) throw new Error('No requestId/URLs returned from submit');
 
         // Step 2: Poll for this video
-        const videoUrl = await pollVideoStatus(requestId, i);
+        const videoUrl = await pollVideoStatus(requestId, statusUrl, responseUrl, i);
         
         setVideoProgress(prev => prev.map((v, idx) =>
           idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
