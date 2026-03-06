@@ -13,8 +13,13 @@ serve(async (req) => {
   try {
     const { imageUrl, prompt } = await req.json();
     
-    console.log('Generating video from image using fal.ai LTX-2-19B');
+    console.log('Generating 5s video from image using fal.ai LTX-2-19B');
+    console.log('Image URL:', imageUrl?.substring(0, 100));
     console.log('Prompt:', prompt?.substring(0, 100));
+
+    if (!imageUrl) {
+      throw new Error('imageUrl is required');
+    }
 
     const FAL_KEY = Deno.env.get('FAL_KEY');
     if (!FAL_KEY) {
@@ -23,7 +28,7 @@ serve(async (req) => {
 
     const modelId = 'fal-ai/ltx-2-19b/image-to-video';
 
-    // Step 1: Submit to fal.ai queue (REST API body is flat, no "input" wrapper)
+    // Submit to fal.ai queue with explicit 5-second duration (121 frames at 24fps ≈ 5s)
     const submitResponse = await fetch(`https://queue.fal.run/${modelId}`, {
       method: 'POST',
       headers: {
@@ -31,8 +36,12 @@ serve(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        prompt: prompt || '',
-        image_url: imageUrl
+        prompt: prompt || 'Smooth cinematic motion, slow camera movement',
+        image_url: imageUrl,
+        num_frames: 121,
+        frame_rate: 24,
+        width: 512,
+        height: 768
       })
     });
 
@@ -45,8 +54,9 @@ serve(async (req) => {
     const submitData = await submitResponse.json();
     console.log('fal.ai submit response keys:', Object.keys(submitData));
 
-    // Check if result came back directly (synchronous)
+    // Check if result came back directly (synchronous response)
     if (submitData?.video?.url) {
+      console.log('Got synchronous video result');
       return new Response(
         JSON.stringify({ videoUrl: submitData.video.url }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -59,9 +69,9 @@ serve(async (req) => {
       throw new Error('No request_id in fal.ai response');
     }
 
-    console.log('Got request_id:', requestId);
+    console.log('Got request_id:', requestId, '— polling for completion...');
 
-    // Step 2: Poll for completion
+    // Poll for completion (max 4 minutes for 5s video)
     const maxAttempts = 120;
     let attempts = 0;
 
@@ -98,7 +108,8 @@ serve(async (req) => {
           );
 
           if (!resultResponse.ok) {
-            throw new Error('Failed to fetch result');
+            const errText = await resultResponse.text();
+            throw new Error(`Failed to fetch result: ${errText}`);
           }
 
           const resultData = await resultResponse.json();
@@ -110,6 +121,7 @@ serve(async (req) => {
             throw new Error('No video URL in fal.ai result');
           }
 
+          console.log('Video generated successfully:', videoUrl.substring(0, 80));
           return new Response(
             JSON.stringify({ videoUrl }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -117,7 +129,7 @@ serve(async (req) => {
         }
 
         if (statusData.status === 'FAILED') {
-          throw new Error('fal.ai generation failed: ' + (statusData.error || 'Unknown error'));
+          throw new Error('fal.ai generation failed: ' + (statusData.error || JSON.stringify(statusData)));
         }
       } catch (pollError) {
         if (attempts >= maxAttempts - 5) {
@@ -127,7 +139,7 @@ serve(async (req) => {
       }
     }
 
-    throw new Error('Video generation timeout - please try again');
+    throw new Error('Video generation timeout after 4 minutes');
 
   } catch (error: unknown) {
     console.error('Error generating video:', error);
