@@ -216,8 +216,15 @@ const Index = () => {
         });
 
         if (response.error) throw response.error;
+        
+        if (response.data?.error) {
+          throw new Error(response.data.error);
+        }
 
         const videoUrl = response.data.videoUrl;
+        if (!videoUrl) {
+          throw new Error('No video URL returned');
+        }
 
         setVideoProgress((prev) => prev.map((v, idx) =>
         idx === i ? { ...v, status: 'complete' as const, videoUrl } : v
@@ -237,14 +244,26 @@ const Index = () => {
           description: error instanceof Error ? error.message : 'Generation failed'
         });
 
-        return img.imageUrl;
+        return null; // Return null instead of image URL
       }
     });
 
-    const videoUrls = await Promise.all(videoPromises);
-    setGeneratedVideos(videoUrls);
+    const results = await Promise.all(videoPromises);
+    const validVideoUrls = results.filter((url): url is string => url !== null);
+    
+    if (validVideoUrls.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'All Videos Failed',
+        description: 'Could not generate any video clips. Please try again.'
+      });
+      setAppStatus('review');
+      return;
+    }
+
+    setGeneratedVideos(validVideoUrls);
     setAppStatus('composing');
-    await composeReel(videoUrls);
+    await composeReel(validVideoUrls);
   };
 
   const composeReel = async (videoUrls: string[]) => {
