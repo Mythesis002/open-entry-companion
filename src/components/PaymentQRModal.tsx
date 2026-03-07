@@ -193,7 +193,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
     setQrImageUrl(null);
     setQrId(null);
     setTransactionId(null);
-    setTimeLeft(15 * 60);
+    setTimeLeft(15 * 60 - 10);
     setError(null);
     initializePayment();
   };
