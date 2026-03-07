@@ -11,125 +11,100 @@ serve(async (req) => {
   }
 
   try {
-    const { videoUrls, templateId } = await req.json();
-    
-    console.log('Composing reel with Creatomate');
-    console.log('Template ID:', templateId);
-    console.log('Video URLs:', JSON.stringify(videoUrls));
-
-    if (!videoUrls || !Array.isArray(videoUrls) || videoUrls.length === 0) {
-      throw new Error('No video URLs provided');
-    }
-
-    // Validate that all URLs look like actual video URLs (not base64 images)
-    for (let i = 0; i < videoUrls.length; i++) {
-      const url = videoUrls[i];
-      if (!url || typeof url !== 'string') {
-        throw new Error(`Invalid video URL at index ${i}`);
-      }
-      if (url.startsWith('data:image')) {
-        throw new Error(`URL at index ${i} is an image data URI, not a video URL. Video generation may have failed.`);
-      }
-      if (!url.startsWith('http')) {
-        throw new Error(`URL at index ${i} is not a valid HTTP URL: ${url.substring(0, 50)}`);
-      }
-    }
+    const { videoUrls, templateId, renderId } = await req.json();
 
     const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
     if (!CREATOMATE_API_KEY) {
       throw new Error('CREATOMATE_API_KEY is not configured');
     }
 
-    // Build modifications object - map each video to its slot
+    // MODE 1: Check render status (polling from frontend)
+    if (renderId) {
+      const statusResponse = await fetch(`https://api.creatomate.com/v2/renders/${renderId}`, {
+        headers: { 'Authorization': `Bearer ${CREATOMATE_API_KEY}` }
+      });
+
+      if (!statusResponse.ok) {
+        const errText = await statusResponse.text();
+        throw new Error(`Status check failed: ${statusResponse.status} - ${errText}`);
+      }
+
+      const statusData = await statusResponse.json();
+      console.log(`Render ${renderId} status: ${statusData.status}`);
+
+      if (statusData.status === 'succeeded') {
+        return new Response(
+          JSON.stringify({ status: 'complete', videoUrl: statusData.url }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (statusData.status === 'failed') {
+        return new Response(
+          JSON.stringify({ status: 'failed', error: statusData.error_message || 'Render failed' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ status: 'rendering' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // MODE 2: Submit new render
+    if (!videoUrls || !Array.isArray(videoUrls) || videoUrls.length === 0) {
+      throw new Error('No video URLs provided');
+    }
+
+    for (let i = 0; i < videoUrls.length; i++) {
+      const url = videoUrls[i];
+      if (!url || typeof url !== 'string') throw new Error(`Invalid video URL at index ${i}`);
+      if (url.startsWith('data:image')) throw new Error(`URL at index ${i} is an image data URI, not a video URL.`);
+      if (!url.startsWith('http')) throw new Error(`URL at index ${i} is not a valid HTTP URL`);
+    }
+
     const modifications: Record<string, string> = {};
     videoUrls.forEach((url: string, index: number) => {
       modifications[`video_${index + 1}.source`] = url;
     });
 
-    console.log('Sending to Creatomate with modifications:', JSON.stringify(modifications));
+    console.log('Submitting to Creatomate:', JSON.stringify(modifications));
 
-    // Call Creatomate API to start render
     const response = await fetch('https://api.creatomate.com/v2/renders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${CREATOMATE_API_KEY}`
       },
-      body: JSON.stringify({
-        template_id: templateId,
-        modifications
-      })
+      body: JSON.stringify({ template_id: templateId, modifications })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Creatomate error:', response.status, errorText);
       throw new Error(`Creatomate error: ${response.status} - ${errorText}`);
     }
 
     const renderData = await response.json();
-    console.log('Creatomate response:', JSON.stringify(renderData));
-
-    // Creatomate returns an array of renders
     const render = Array.isArray(renderData) ? renderData[0] : renderData;
-    
+
     if (!render || !render.id) {
       throw new Error('Invalid Creatomate response - no render ID');
     }
 
-    console.log('Render started with ID:', render.id);
-
-    // If render already completed (unlikely but possible)
+    // If already done (unlikely)
     if (render.status === 'succeeded' && render.url) {
       return new Response(
-        JSON.stringify({ videoUrl: render.url, status: 'complete' }),
+        JSON.stringify({ status: 'complete', videoUrl: render.url }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Poll for completion (max 3 minutes)
-    let attempts = 0;
-    const maxAttempts = 90;
-    
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const statusResponse = await fetch(`https://api.creatomate.com/v2/renders/${render.id}`, {
-        headers: {
-          'Authorization': `Bearer ${CREATOMATE_API_KEY}`
-        }
-      });
-
-      if (!statusResponse.ok) {
-        const errText = await statusResponse.text();
-        console.error(`Poll error ${statusResponse.status}: ${errText}`);
-        attempts++;
-        continue;
-      }
-
-      const statusData = await statusResponse.json();
-      console.log(`Poll attempt ${attempts + 1}: status=${statusData.status}`);
-
-      if (statusData.status === 'succeeded') {
-        console.log('Render complete! URL:', statusData.url);
-        return new Response(
-          JSON.stringify({ 
-            videoUrl: statusData.url,
-            status: 'complete'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (statusData.status === 'failed') {
-        console.error('Render failed:', statusData.error_message);
-        throw new Error('Creatomate render failed: ' + (statusData.error_message || 'Unknown error'));
-      }
-
-      attempts++;
-    }
-
-    throw new Error('Render timeout after 3 minutes - please try again');
+    // Return render ID for client-side polling
+    return new Response(
+      JSON.stringify({ status: 'rendering', renderId: render.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error: unknown) {
     console.error('Error composing reel:', error);
