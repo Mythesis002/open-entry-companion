@@ -284,12 +284,23 @@ const Index = () => {
 
     const results = await Promise.all(jobPromises);
     const validVideoUrls = results.filter((url): url is string => url !== null);
+    const requiredCount = selectedTemplate.shots.length;
 
     if (validVideoUrls.length === 0) {
       toast({
         variant: 'destructive',
         title: 'All Videos Failed',
         description: 'Could not generate any video clips. Please try again.'
+      });
+      setAppStatus('review');
+      return;
+    }
+
+    if (validVideoUrls.length < requiredCount) {
+      toast({
+        variant: 'destructive',
+        title: `${requiredCount - validVideoUrls.length} clip(s) failed`,
+        description: 'Some clips failed to generate. Please go back and retry.'
       });
       setAppStatus('review');
       return;

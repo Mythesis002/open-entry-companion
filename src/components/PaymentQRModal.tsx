@@ -25,7 +25,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
   const [qrId, setQrId] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(15 * 60); // 15 minutes
+  const [timeLeft, setTimeLeft] = useState<number>(15 * 60 - 10); // 15 min minus 10s buffer
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
