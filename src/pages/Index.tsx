@@ -300,10 +300,29 @@ const Index = () => {
     await composeReel(validVideoUrls);
   };
 
+  const pollComposeStatus = async (renderId: string): Promise<string> => {
+    const maxAttempts = 90; // 3 minutes at 2s intervals
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        const res = await supabase.functions.invoke('compose-reel', {
+          body: { renderId }
+        });
+        if (res.error) { console.error('Compose poll error:', res.error); continue; }
+        if (res.data?.status === 'complete' && res.data?.videoUrl) return res.data.videoUrl;
+        if (res.data?.status === 'failed') throw new Error(res.data.error || 'Render failed');
+      } catch (err) {
+        if (attempt >= maxAttempts - 3) throw err;
+      }
+    }
+    throw new Error('Composition timed out after 3 minutes');
+  };
+
   const composeReel = async (videoUrls: string[]) => {
     if (!selectedTemplate) return;
 
     try {
+      // Submit render job (no polling inside edge function now)
       const response = await supabase.functions.invoke('compose-reel', {
         body: {
           videoUrls,
@@ -312,21 +331,28 @@ const Index = () => {
       });
 
       if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
 
-      setFinalVideoUrl(response.data.videoUrl);
+      // If already complete
+      if (response.data?.status === 'complete' && response.data?.videoUrl) {
+        setFinalVideoUrl(response.data.videoUrl);
+        setAppStatus('complete');
+        toast({ title: '🎉 Reel Created!', description: 'Your viral video is ready to download' });
+        return;
+      }
+
+      // Poll from frontend
+      const renderId = response.data?.renderId;
+      if (!renderId) throw new Error('No render ID returned');
+
+      const finalUrl = await pollComposeStatus(renderId);
+      setFinalVideoUrl(finalUrl);
       setAppStatus('complete');
-
-      toast({
-        title: '🎉 Reel Created!',
-        description: 'Your viral video is ready to download'
-      });
+      toast({ title: '🎉 Reel Created!', description: 'Your viral video is ready to download' });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Composition failed';
-      toast({
-        variant: 'destructive',
-        title: 'Composition Error',
-        description: message
-      });
+      toast({ variant: 'destructive', title: 'Composition Error', description: message });
+      setAppStatus('review');
     }
   };
 
