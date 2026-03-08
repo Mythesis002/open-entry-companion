@@ -94,7 +94,7 @@ export function RegistrationModal({ isOpen, onClose, onComplete }: RegistrationM
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Create Your Account</DialogTitle>
-          <DialogDescription>Register to start creating AI-powered viral reels</DialogDescription>
+          <DialogDescription>Register to start creating AI-generated videos</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">

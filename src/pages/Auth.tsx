@@ -129,13 +129,13 @@ export default function Auth() {
           <h1 className="text-5xl font-bold font-display leading-tight mb-6">
             Create stunning
             <span className="block bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              AI video ads
+              AI videos
             </span>
             in seconds
           </h1>
           
           <p className="text-lg text-muted-foreground max-w-md mb-8">
-            Transform your product images into professional video advertisements with the power of AI.
+            Transform your product images into professional AI-generated videos in seconds.
           </p>
           
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -173,7 +173,7 @@ export default function Auth() {
             <p className="text-muted-foreground">
               {isLogin 
                 ? 'Enter your credentials to access your account' 
-                : 'Start creating amazing video ads today'}
+                : 'Start creating amazing AI videos today'}
             </p>
           </div>
           
