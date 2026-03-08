@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { QRCodeSVG } from 'qrcode.react';
 import type { ReelTemplate } from '@/types';
 
 interface PaymentQRModalProps {
@@ -21,6 +22,7 @@ interface PendingPayment {
   transactionId: string;
   qrId: string;
   qrImageUrl: string;
+  shortUrl: string;
   templateId: string;
   templateName: string;
   templatePrice: number;
@@ -50,6 +52,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'loading' | 'ready' | 'checking' | 'completed' | 'failed'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
+  const [shortUrl, setShortUrl] = useState<string | null>(null);
   const [qrId, setQrId] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60 - 10);
@@ -78,6 +81,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
           if (remaining > 0) {
             setQrId(pending.qrId);
             setQrImageUrl(pending.qrImageUrl);
+            setShortUrl(pending.shortUrl);
             setTransactionId(pending.transactionId);
             setTimeLeft(remaining);
             setPaymentStatus('ready');
@@ -105,6 +109,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
         if (remaining > 0) {
           setQrId(pending.qrId);
           setQrImageUrl(pending.qrImageUrl);
+          setShortUrl(pending.shortUrl);
           setTransactionId(pending.transactionId);
           setTimeLeft(remaining);
           setPaymentStatus('ready');
@@ -189,9 +194,10 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
 
       if (response.error) throw new Error(response.error.message);
 
-      const { qr_id, image_url } = response.data;
+      const { qr_id, image_url, short_url } = response.data;
       setQrId(qr_id);
       setQrImageUrl(image_url);
+      setShortUrl(short_url);
       setPaymentStatus('ready');
 
       const now = Date.now();
@@ -199,6 +205,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
         transactionId: txnId,
         qrId: qr_id,
         qrImageUrl: image_url,
+        shortUrl: short_url,
         templateId: template.id,
         templateName: template.name,
         templatePrice: template.price,
@@ -251,6 +258,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
       cleanupIntervals();
       setPaymentStatus('idle');
       setQrImageUrl(null);
+      setShortUrl(null);
       setQrId(null);
       setTransactionId(null);
       setTimeLeft(15 * 60 - 10);
@@ -264,6 +272,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
     clearPendingPayment();
     setPaymentStatus('idle');
     setQrImageUrl(null);
+    setShortUrl(null);
     setQrId(null);
     setTransactionId(null);
     setTimeLeft(15 * 60 - 10);
@@ -318,8 +327,17 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
             </div>
 
             <div className="px-6 pb-4">
-              <div className="relative bg-white rounded-2xl p-4 shadow-lg mx-auto max-w-[280px]">
-                {qrImageUrl ? (
+              <div className="relative bg-card rounded-2xl p-5 shadow-lg mx-auto max-w-[260px]">
+                {shortUrl ? (
+                  <div className="flex items-center justify-center">
+                    <QRCodeSVG 
+                      value={shortUrl} 
+                      size={200} 
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
+                ) : qrImageUrl ? (
                   <img src={qrImageUrl} alt="Payment QR Code" className="w-full h-auto rounded-lg" />
                 ) : (
                   <div className="w-full aspect-square bg-muted/50 rounded-lg flex items-center justify-center">
