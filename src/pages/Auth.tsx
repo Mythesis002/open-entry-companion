@@ -135,7 +135,7 @@ export default function Auth() {
           </h1>
           
           <p className="text-lg text-muted-foreground max-w-md mb-8">
-            Transform your product images into professional video advertisements with the power of AI.
+            Transform your product images into professional AI-generated videos in seconds.
           </p>
           
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
