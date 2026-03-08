@@ -82,7 +82,7 @@ export const ReferenceInputCollector = ({
       {imageInputs.length > 0 && (
         <div className={`grid ${imageInputs.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'} gap-4`}>
           {imageInputs.map((input) => (
-            <div key={input.id} className="aspect-square relative">
+            <div key={input.id} className="aspect-square relative max-w-[200px] mx-auto">
               {collectedInputs[input.id] ? (
                 <div className="relative w-full h-full rounded-2xl overflow-hidden group">
                   <img
