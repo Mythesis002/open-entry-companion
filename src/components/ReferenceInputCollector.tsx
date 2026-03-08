@@ -101,7 +101,7 @@ export const ReferenceInputCollector = ({
                   </div>
                 </div>
               ) : (
-                <label className="w-full h-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors">
+                <label className="w-full h-full rounded-2xl border-2 border-border hover:border-primary bg-muted/30 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors">
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                     <User className="w-8 h-8 text-muted-foreground" />
                   </div>
