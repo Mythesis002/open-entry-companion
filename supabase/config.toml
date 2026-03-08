@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.check-video-status]
 verify_jwt = false
+
+[functions.razorpay-webhook]
+verify_jwt = false
