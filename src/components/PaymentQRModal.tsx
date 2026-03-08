@@ -153,6 +153,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
           user_id: user.id,
           amount: template.price,
           status: 'pending',
+          template_id: template.id,
           ad_inputs: { templateId: template.id, templateName: template.name }
         })
         .select()
