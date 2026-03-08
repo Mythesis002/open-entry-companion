@@ -52,6 +52,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'loading' | 'ready' | 'checking' | 'completed' | 'failed'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
+  const [shortUrl, setShortUrl] = useState<string | null>(null);
   const [qrId, setQrId] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60 - 10);
