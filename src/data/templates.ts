@@ -40,8 +40,8 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
     usedCount: 12543,
     uploadTips: [
       'Use a clear, well-lit photo of your car',
-      'Side or 3/4 angle works best',
-      'Avoid photos with busy backgrounds'
+      'Side angle with Number Plate works best',
+      'Avoid photos with any person or busy backgrounds'
     ],
     creatomateTemplateId: '70f6563a-d3ce-47f5-90a0-34d40663881e',
     price: 1
