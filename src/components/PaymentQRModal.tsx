@@ -194,9 +194,10 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
 
       if (response.error) throw new Error(response.error.message);
 
-      const { qr_id, image_url } = response.data;
+      const { qr_id, image_url, short_url } = response.data;
       setQrId(qr_id);
       setQrImageUrl(image_url);
+      setShortUrl(short_url);
       setPaymentStatus('ready');
 
       const now = Date.now();
@@ -204,6 +205,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
         transactionId: txnId,
         qrId: qr_id,
         qrImageUrl: image_url,
+        shortUrl: short_url,
         templateId: template.id,
         templateName: template.name,
         templatePrice: template.price,
