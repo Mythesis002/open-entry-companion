@@ -250,12 +250,6 @@ const Index = () => {
 
     setAppStatus('generating');
 
-    // Increment template used_count
-    supabase.from('templates').select('used_count').eq('id', selectedTemplate.id).single().then(({ data }) => {
-      if (data) {
-        supabase.from('templates').update({ used_count: data.used_count + 1 }).eq('id', selectedTemplate.id);
-      }
-    });
 
     const initialImages: GeneratedImage[] = selectedTemplate.shots.map((shot) => ({
       id: `img-${shot.id}`,

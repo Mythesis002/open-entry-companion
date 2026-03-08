@@ -57,9 +57,28 @@ export function useTemplateEngagement(templateId: string) {
   }, [templateId, userLiked, stats.likes_count]);
 
   const incrementUsed = useCallback(async () => {
-    await supabase.from('templates').update({ used_count: stats.used_count + 1 }).eq('id', templateId);
-    setStats(s => ({ ...s, used_count: s.used_count + 1 }));
-  }, [templateId, stats.used_count]);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return false;
+
+    const { data: currentTemplate } = await supabase
+      .from('templates')
+      .select('used_count')
+      .eq('id', templateId)
+      .maybeSingle();
+
+    if (!currentTemplate) return false;
+
+    const nextUsedCount = currentTemplate.used_count + 1;
+    const { error } = await supabase
+      .from('templates')
+      .update({ used_count: nextUsedCount })
+      .eq('id', templateId);
+
+    if (error) return false;
+
+    setStats(s => ({ ...s, used_count: nextUsedCount }));
+    return true;
+  }, [templateId]);
 
   return { stats, userLiked, toggleLike, incrementUsed, loading };
 }
