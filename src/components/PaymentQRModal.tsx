@@ -327,18 +327,17 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
             </div>
 
             <div className="px-6 pb-4">
-              <div className="relative bg-card rounded-2xl p-5 shadow-lg mx-auto max-w-[260px]">
-                {shortUrl ? (
+              <div className="relative bg-card rounded-2xl p-5 shadow-lg mx-auto max-w-[240px]">
+                {(shortUrl || qrImageUrl) ? (
                   <div className="flex items-center justify-center">
                     <QRCodeSVG 
-                      value={shortUrl} 
-                      size={200} 
+                      value={shortUrl || `upi://pay?pa=${MERCHANT_VPA}&pn=Opentry&am=${template.price}&cu=INR&tn=${encodeURIComponent(`Video generation for ${template.name}`)}`}
+                      size={190} 
                       level="H"
                       includeMargin={false}
+                      bgColor="transparent"
                     />
                   </div>
-                ) : qrImageUrl ? (
-                  <img src={qrImageUrl} alt="Payment QR Code" className="w-full h-auto rounded-lg" />
                 ) : (
                   <div className="w-full aspect-square bg-muted/50 rounded-lg flex items-center justify-center">
                     <QrCode className="w-16 h-16 text-muted-foreground/30" />
