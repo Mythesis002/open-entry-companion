@@ -173,7 +173,7 @@ export default function Auth() {
             <p className="text-muted-foreground">
               {isLogin 
                 ? 'Enter your credentials to access your account' 
-                : 'Start creating amazing video ads today'}
+                : 'Start creating amazing AI videos today'}
             </p>
           </div>
           
