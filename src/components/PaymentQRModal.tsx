@@ -10,7 +10,7 @@ import type { ReelTemplate } from '@/types';
 interface PaymentQRModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPaymentComplete: () => void;
+  onPaymentComplete: (transactionId: string) => void;
   template: ReelTemplate;
 }
 
@@ -24,14 +24,12 @@ interface PendingPayment {
   templateId: string;
   templateName: string;
   templatePrice: number;
-  createdAt: number; // timestamp
-  expiresAt: number; // timestamp (15 min from creation)
+  createdAt: number;
+  expiresAt: number;
 }
 
 function savePendingPayment(data: PendingPayment) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 }
 
 function loadPendingPayment(): PendingPayment | null {
@@ -39,21 +37,13 @@ function loadPendingPayment(): PendingPayment | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const data: PendingPayment = JSON.parse(raw);
-    // Check if expired
-    if (Date.now() > data.expiresAt) {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
+    if (Date.now() > data.expiresAt) { localStorage.removeItem(STORAGE_KEY); return null; }
     return data;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function clearPendingPayment() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
 }
 
 export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }: PaymentQRModalProps) {
@@ -70,27 +60,22 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Cleanup intervals
   const cleanupIntervals = useCallback(() => {
     if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
     if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; }
     isPollingRef.current = false;
   }, []);
 
-  useEffect(() => {
-    return () => cleanupIntervals();
-  }, [cleanupIntervals]);
+  useEffect(() => { return () => cleanupIntervals(); }, [cleanupIntervals]);
 
   // Handle visibility change — resume polling when user comes back
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isOpen) {
-        // User came back to the tab — check if we have a pending payment
         const pending = loadPendingPayment();
         if (pending && pending.templateId === template.id) {
-          const remaining = Math.floor((pending.expiresAt - Date.now()) / 1000) - 10; // 10s buffer
+          const remaining = Math.floor((pending.expiresAt - Date.now()) / 1000) - 10;
           if (remaining > 0) {
-            // Restore state and resume polling
             setQrId(pending.qrId);
             setQrImageUrl(pending.qrImageUrl);
             setTransactionId(pending.transactionId);
@@ -100,7 +85,6 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
               startPolling(pending.qrId, pending.transactionId);
             }
           } else {
-            // Expired
             clearPendingPayment();
             setPaymentStatus('failed');
             setError('QR code expired. Please try again.');
@@ -108,19 +92,17 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
         }
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isOpen, template.id]);
 
-  // Initialize payment when modal opens — check for existing pending payment first
+  // Initialize payment when modal opens
   useEffect(() => {
     if (isOpen && user && paymentStatus === 'idle') {
       const pending = loadPendingPayment();
       if (pending && pending.templateId === template.id) {
         const remaining = Math.floor((pending.expiresAt - Date.now()) / 1000) - 10;
         if (remaining > 0) {
-          // Resume existing payment session
           setQrId(pending.qrId);
           setQrImageUrl(pending.qrImageUrl);
           setTransactionId(pending.transactionId);
@@ -153,10 +135,14 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
         });
       }, 1000);
     }
-    return () => {
-      if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; }
-    };
+    return () => { if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; } };
   }, [paymentStatus]);
+
+  const getAuthHeaders = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   const createTransaction = async (): Promise<string | null> => {
     if (!user) return null;
@@ -188,12 +174,16 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
       if (!txnId) throw new Error('Failed to create transaction');
       setTransactionId(txnId);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const headers = await getAuthHeaders();
 
       const response = await supabase.functions.invoke('create-razorpay-qr', {
-        body: { amount: template.price, transaction_id: txnId, template_name: template.name },
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        body: { 
+          amount: template.price, 
+          transaction_id: txnId, 
+          template_name: template.name,
+          template_id: template.id  // Send template_id for server-side price validation
+        },
+        headers
       });
 
       if (response.error) throw new Error(response.error.message);
@@ -203,7 +193,6 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
       setQrImageUrl(image_url);
       setPaymentStatus('ready');
 
-      // Save to localStorage so session survives tab switches
       const now = Date.now();
       savePendingPayment({
         transactionId: txnId,
@@ -226,32 +215,24 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   };
 
   const startPolling = useCallback((qrIdVal: string, txnId: string) => {
-    // Prevent duplicate polling
     if (isPollingRef.current) return;
     isPollingRef.current = true;
-
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
     pollIntervalRef.current = setInterval(async () => {
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-
+        const headers = await getAuthHeaders();
         const response = await supabase.functions.invoke('check-qr-payment', {
           body: { qr_id: qrIdVal, transaction_id: txnId },
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
+          headers
         });
 
         if (response.data?.paid) {
           cleanupIntervals();
           clearPendingPayment();
-          
           setPaymentStatus('completed');
           toast({ title: '✅ Payment Successful!', description: 'Starting video generation...' });
-
-          setTimeout(() => {
-            onPaymentComplete();
-          }, 1500);
+          setTimeout(() => { onPaymentComplete(txnId); }, 1500);
         }
       } catch (err) {
         console.error('Polling error:', err);
@@ -267,7 +248,6 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const handleClose = () => {
     if (paymentStatus !== 'checking' && paymentStatus !== 'completed') {
       cleanupIntervals();
-      // Don't clear localStorage — user might come back!
       setPaymentStatus('idle');
       setQrImageUrl(null);
       setQrId(null);
@@ -299,10 +279,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-gradient-to-br from-background via-background to-muted/30 border-0">
-        <button 
-          onClick={handleClose}
-          className="absolute right-4 top-4 z-10 rounded-full p-2 bg-muted/80 hover:bg-muted transition-colors"
-        >
+        <button onClick={handleClose} className="absolute right-4 top-4 z-10 rounded-full p-2 bg-muted/80 hover:bg-muted transition-colors">
           <X className="w-4 h-4" />
         </button>
 
@@ -320,9 +297,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
               <AlertCircle className="w-12 h-12 text-destructive" />
             </div>
             <h2 className="text-2xl font-bold text-destructive mb-2">Payment Failed</h2>
-            <p className="text-muted-foreground text-center mb-6">
-              {error || 'Something went wrong. Please try again.'}
-            </p>
+            <p className="text-muted-foreground text-center mb-6">{error || 'Something went wrong. Please try again.'}</p>
             <Button onClick={handleRetry} variant="default">Try Again</Button>
           </div>
         ) : paymentStatus === 'loading' ? (
