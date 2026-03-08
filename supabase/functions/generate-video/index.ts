@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
+// Valid template prices (server-side source of truth)
+const VALID_TEMPLATE_PRICES: Record<string, number> = {
+  'car-sinking': 1,
 };
 
 serve(async (req) => {
@@ -11,14 +17,61 @@ serve(async (req) => {
   }
 
   try {
-    const { imageUrl, prompt } = await req.json();
-    
-    console.log('Submitting image-to-video job to fal.ai');
-    console.log('Image URL:', imageUrl?.substring(0, 100));
+    // Auth verification
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Use anon key client for auth verification
+    const anonClient = createClient(
+      SUPABASE_URL,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log('Authenticated user for video gen:', userId);
+
+    const { imageUrl, prompt, transactionId } = await req.json();
+    
     if (!imageUrl) {
       throw new Error('imageUrl is required');
     }
+
+    if (!transactionId) {
+      throw new Error('transactionId is required - payment must be completed first');
+    }
+
+    // SERVER-SIDE PAYMENT VERIFICATION: Check that this user has a completed transaction
+    const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    const { data: transaction, error: txnError } = await serviceClient
+      .from('ad_transactions')
+      .select('id, status, user_id')
+      .eq('id', transactionId)
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .maybeSingle();
+
+    if (txnError || !transaction) {
+      console.error('Payment verification failed:', txnError?.message || 'No completed transaction found');
+      return new Response(
+        JSON.stringify({ error: 'Payment not verified. Please complete payment first.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Payment verified for transaction:', transactionId);
 
     const FAL_KEY = Deno.env.get('FAL_KEY');
     if (!FAL_KEY) {
@@ -26,6 +79,8 @@ serve(async (req) => {
     }
 
     const modelId = 'fal-ai/ltx-2-19b/image-to-video';
+
+    console.log('Submitting image-to-video job to fal.ai');
 
     const submitResponse = await fetch(`https://queue.fal.run/${modelId}`, {
       method: 'POST',
@@ -66,10 +121,7 @@ serve(async (req) => {
     }
 
     console.log('Job submitted, request_id:', requestId);
-    console.log('status_url:', submitData.status_url);
-    console.log('response_url:', submitData.response_url);
 
-    // Return request_id AND the actual URLs from fal.ai
     return new Response(
       JSON.stringify({
         requestId,

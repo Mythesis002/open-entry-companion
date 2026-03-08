@@ -64,6 +64,7 @@ export type Database = {
           session_id: string
           token_type: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           access_token: string
@@ -78,6 +79,7 @@ export type Database = {
           session_id: string
           token_type?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           access_token?: string
@@ -92,6 +94,7 @@ export type Database = {
           session_id?: string
           token_type?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

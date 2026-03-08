@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { RangoliDivider, PaisleyCorner, IndianFlagIcon, DiyaIcon } from '@/components/IndianPatterns';
 import { MeshBackground } from '@/components/MeshBackground';
@@ -30,6 +30,46 @@ interface VideoProgress {
   videoUrl?: string;
 }
 
+const WORKFLOW_STORAGE_KEY = 'opentry_workflow_state';
+
+interface PersistedWorkflowState {
+  appStatus: AppStatus;
+  selectedTemplateId: string;
+  generatedImages: GeneratedImage[];
+  paidTransactionId: string | null;
+  generatedVideos: string[];
+  finalVideoUrl: string | null;
+  savedAt: number;
+}
+
+function saveWorkflowState(state: PersistedWorkflowState) {
+  try { localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+function loadWorkflowState(): PersistedWorkflowState | null {
+  try {
+    const raw = localStorage.getItem(WORKFLOW_STORAGE_KEY);
+    if (!raw) return null;
+    const state: PersistedWorkflowState = JSON.parse(raw);
+    // Expire after 1 hour
+    if (Date.now() - state.savedAt > 60 * 60 * 1000) {
+      localStorage.removeItem(WORKFLOW_STORAGE_KEY);
+      return null;
+    }
+    return state;
+  } catch { return null; }
+}
+
+function clearWorkflowState() {
+  try { localStorage.removeItem(WORKFLOW_STORAGE_KEY); } catch {}
+}
+
+const getAuthHeaders = async () => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const Index = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
@@ -48,6 +88,46 @@ const Index = () => {
   const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
   const [appStatus, setAppStatus] = useState<AppStatus>('template');
   const [regeneratingImageId, setRegeneratingImageId] = useState<string | null>(null);
+  const [paidTransactionId, setPaidTransactionId] = useState<string | null>(null);
+
+  // Restore workflow state on mount
+  useEffect(() => {
+    const saved = loadWorkflowState();
+    if (saved && user) {
+      const template = REEL_TEMPLATES.find(t => t.id === saved.selectedTemplateId);
+      if (template) {
+        setSelectedTemplate(template);
+        setGeneratedImages(saved.generatedImages);
+        setPaidTransactionId(saved.paidTransactionId);
+        setGeneratedVideos(saved.generatedVideos);
+        setFinalVideoUrl(saved.finalVideoUrl);
+        // Restore to the appropriate step
+        if (saved.appStatus === 'complete' && saved.finalVideoUrl) {
+          setAppStatus('complete');
+        } else if (saved.appStatus === 'review' || saved.appStatus === 'videos' || saved.appStatus === 'composing') {
+          // If was mid-video-gen or composing, go back to review so user can retry
+          setAppStatus('review');
+        } else {
+          setAppStatus(saved.appStatus);
+        }
+      }
+    }
+  }, [user]);
+
+  // Persist workflow state whenever key values change (after payment)
+  useEffect(() => {
+    if (paidTransactionId && selectedTemplate && (appStatus === 'review' || appStatus === 'videos' || appStatus === 'composing' || appStatus === 'complete')) {
+      saveWorkflowState({
+        appStatus,
+        selectedTemplateId: selectedTemplate.id,
+        generatedImages,
+        paidTransactionId,
+        generatedVideos,
+        finalVideoUrl,
+        savedAt: Date.now(),
+      });
+    }
+  }, [appStatus, generatedImages, generatedVideos, finalVideoUrl, paidTransactionId, selectedTemplate]);
 
   const handleSelectTemplate = (template: ReelTemplate) => {
     if (!user || !isRegistered()) {
@@ -60,25 +140,20 @@ const Index = () => {
     setGeneratedImages([]);
     setGeneratedVideos([]);
     setFinalVideoUrl(null);
+    setPaidTransactionId(null);
     setAppStatus('upload');
   };
 
-  // Build reference images for a specific shot based on its useInputs + presetReferenceImages
   const buildShotReferences = (shot: typeof selectedTemplate extends null ? never : NonNullable<typeof selectedTemplate>['shots'][0]) => {
     const refs: string[] = [];
-
-    // Add user-provided inputs
     for (const inputId of shot.useInputs) {
       if (collectedInputs[inputId]) {
         refs.push(collectedInputs[inputId]);
       }
     }
-
-    // Add preset scene references
     if (shot.presetReferenceImages) {
       refs.push(...shot.presetReferenceImages);
     }
-
     return refs;
   };
 
@@ -92,7 +167,6 @@ const Index = () => {
 
     setAppStatus('generating');
 
-    // Initialize images from shots
     const initialImages: GeneratedImage[] = selectedTemplate.shots.map((shot) => ({
       id: `img-${shot.id}`,
       shotId: shot.id,
@@ -102,37 +176,31 @@ const Index = () => {
     }));
     setGeneratedImages(initialImages);
 
-    // Generate all images in parallel - each shot gets its own references
+    const headers = await getAuthHeaders();
+
     const imagePromises = selectedTemplate.shots.map(async (shot, i) => {
       try {
         const shotReferences = buildShotReferences(shot);
 
         const response = await supabase.functions.invoke('generate-image', {
-          body: {
-            prompt: shot.prompt,
-            referenceImages: shotReferences
-          }
+          body: { prompt: shot.prompt, referenceImages: shotReferences },
+          headers
         });
 
         if (response.error) throw response.error;
 
         setGeneratedImages((prev) => prev.map((img) =>
-        img.shotId === shot.id ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+          img.shotId === shot.id ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
         ));
 
         return { success: true, index: i };
       } catch (error: unknown) {
         console.error(`Error generating shot ${shot.id}:`, error);
         const message = error instanceof Error ? error.message : 'Generation failed';
-        toast({
-          variant: 'destructive',
-          title: `Shot ${shot.id} Error`,
-          description: message
-        });
+        toast({ variant: 'destructive', title: `Shot ${shot.id} Error`, description: message });
         setGeneratedImages((prev) => prev.map((img) =>
-        img.shotId === shot.id ? { ...img, status: 'error' as const } : img
+          img.shotId === shot.id ? { ...img, status: 'error' as const } : img
         ));
-
         return { success: false, index: i };
       }
     });
@@ -154,26 +222,21 @@ const Index = () => {
 
     try {
       const shotReferences = buildShotReferences(shot);
+      const headers = await getAuthHeaders();
 
       const response = await supabase.functions.invoke('generate-image', {
-        body: {
-          prompt: shot.prompt,
-          referenceImages: shotReferences
-        }
+        body: { prompt: shot.prompt, referenceImages: shotReferences },
+        headers
       });
 
       if (response.error) throw response.error;
 
       setGeneratedImages((prev) => prev.map((img) =>
-      img.id === imageId ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
+        img.id === imageId ? { ...img, imageUrl: response.data.imageUrl, status: 'complete' as const } : img
       ));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Regeneration failed';
-      toast({
-        variant: 'destructive',
-        title: 'Regeneration Error',
-        description: message
-      });
+      toast({ variant: 'destructive', title: 'Regeneration Error', description: message });
     }
 
     setRegeneratingImageId(null);
@@ -183,35 +246,30 @@ const Index = () => {
     setShowPaymentQR(true);
   };
 
-  const handlePaymentComplete = async () => {
+  const handlePaymentComplete = async (transactionId: string) => {
     setShowPaymentQR(false);
-    await generateVideos();
+    setPaidTransactionId(transactionId);
+    await generateVideos(transactionId);
   };
 
-  // Helper: poll a single video until complete or failed
   const pollVideoStatus = async (requestId: string, statusUrl: string, responseUrl: string, index: number): Promise<string | null> => {
-    const maxAttempts = 120; // 4 minutes at 2s intervals
+    const maxAttempts = 120;
+    const headers = await getAuthHeaders();
+    
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 3000));
 
       try {
         const res = await supabase.functions.invoke('check-video-status', {
-          body: { requestId, statusUrl, responseUrl }
+          body: { requestId, statusUrl, responseUrl },
+          headers
         });
 
-        if (res.error) {
-          console.error(`Poll error for video ${index}:`, res.error);
-          continue;
-        }
+        if (res.error) { console.error(`Poll error for video ${index}:`, res.error); continue; }
 
         const data = res.data;
-        if (data?.status === 'complete' && data?.videoUrl) {
-          return data.videoUrl;
-        }
-        if (data?.status === 'failed') {
-          throw new Error(data.error || 'Video generation failed');
-        }
-        // still processing — continue polling
+        if (data?.status === 'complete' && data?.videoUrl) return data.videoUrl;
+        if (data?.status === 'failed') throw new Error(data.error || 'Video generation failed');
       } catch (err) {
         if (attempt >= maxAttempts - 3) throw err;
         console.error(`Poll attempt ${attempt} error:`, err);
@@ -220,7 +278,7 @@ const Index = () => {
     throw new Error('Video generation timed out after 6 minutes');
   };
 
-  const generateVideos = async () => {
+  const generateVideos = async (transactionId: string) => {
     if (!selectedTemplate) return;
 
     setAppStatus('videos');
@@ -231,7 +289,8 @@ const Index = () => {
     }));
     setVideoProgress(initialProgress);
 
-    // Step 1: Submit all video jobs in parallel
+    const headers = await getAuthHeaders();
+
     const jobPromises = generatedImages.map(async (img, i) => {
       setVideoProgress(prev => prev.map((v, idx) =>
         idx === i ? { ...v, status: 'generating' as const } : v
@@ -242,13 +301,17 @@ const Index = () => {
         const videoPrompt = shot?.videoPrompt || '';
 
         const response = await supabase.functions.invoke('generate-video', {
-          body: { imageUrl: img.imageUrl, prompt: videoPrompt }
+          body: { 
+            imageUrl: img.imageUrl, 
+            prompt: videoPrompt,
+            transactionId  // Pass transaction ID for server-side payment verification
+          },
+          headers
         });
 
         if (response.error) throw response.error;
         if (response.data?.error) throw new Error(response.data.error);
 
-        // If completed synchronously
         if (response.data?.status === 'complete' && response.data?.videoUrl) {
           setVideoProgress(prev => prev.map((v, idx) =>
             idx === i ? { ...v, status: 'complete' as const, videoUrl: response.data.videoUrl } : v
@@ -261,7 +324,6 @@ const Index = () => {
         const responseUrl = response.data?.responseUrl;
         if (!requestId || !statusUrl || !responseUrl) throw new Error('No requestId/URLs returned from submit');
 
-        // Step 2: Poll for this video
         const videoUrl = await pollVideoStatus(requestId, statusUrl, responseUrl, i);
         
         setVideoProgress(prev => prev.map((v, idx) =>
@@ -287,21 +349,13 @@ const Index = () => {
     const requiredCount = selectedTemplate.shots.length;
 
     if (validVideoUrls.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'All Videos Failed',
-        description: 'Could not generate any video clips. Please try again.'
-      });
+      toast({ variant: 'destructive', title: 'All Videos Failed', description: 'Could not generate any video clips. Please try again.' });
       setAppStatus('review');
       return;
     }
 
     if (validVideoUrls.length < requiredCount) {
-      toast({
-        variant: 'destructive',
-        title: `${requiredCount - validVideoUrls.length} clip(s) failed`,
-        description: 'Some clips failed to generate. Please go back and retry.'
-      });
+      toast({ variant: 'destructive', title: `${requiredCount - validVideoUrls.length} clip(s) failed`, description: 'Some clips failed to generate. Please go back and retry.' });
       setAppStatus('review');
       return;
     }
@@ -312,12 +366,15 @@ const Index = () => {
   };
 
   const pollComposeStatus = async (renderId: string): Promise<string> => {
-    const maxAttempts = 90; // 3 minutes at 2s intervals
+    const maxAttempts = 90;
+    const headers = await getAuthHeaders();
+    
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       try {
         const res = await supabase.functions.invoke('compose-reel', {
-          body: { renderId }
+          body: { renderId },
+          headers
         });
         if (res.error) { console.error('Compose poll error:', res.error); continue; }
         if (res.data?.status === 'complete' && res.data?.videoUrl) return res.data.videoUrl;
@@ -333,18 +390,16 @@ const Index = () => {
     if (!selectedTemplate) return;
 
     try {
-      // Submit render job (no polling inside edge function now)
+      const headers = await getAuthHeaders();
+
       const response = await supabase.functions.invoke('compose-reel', {
-        body: {
-          videoUrls,
-          templateId: selectedTemplate.creatomateTemplateId
-        }
+        body: { videoUrls, templateId: selectedTemplate.creatomateTemplateId },
+        headers
       });
 
       if (response.error) throw response.error;
       if (response.data?.error) throw new Error(response.data.error);
 
-      // If already complete
       if (response.data?.status === 'complete' && response.data?.videoUrl) {
         setFinalVideoUrl(response.data.videoUrl);
         setAppStatus('complete');
@@ -352,7 +407,6 @@ const Index = () => {
         return;
       }
 
-      // Poll from frontend
       const renderId = response.data?.renderId;
       if (!renderId) throw new Error('No render ID returned');
 
@@ -374,16 +428,15 @@ const Index = () => {
     setGeneratedVideos([]);
     setVideoProgress([]);
     setFinalVideoUrl(null);
+    setPaidTransactionId(null);
     setAppStatus('template');
+    clearWorkflowState();
   };
 
   const handleRegistrationComplete = () => {
     setShowRegistration(false);
     refetch();
-    toast({
-      title: 'Welcome!',
-      description: 'You can now create amazing reels!'
-    });
+    toast({ title: 'Welcome!', description: 'You can now create amazing reels!' });
   };
 
   const renderContent = () => {
@@ -417,48 +470,34 @@ const Index = () => {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {REEL_TEMPLATES.map((template) =>
-              <TemplateCard
-                key={template.id}
-                template={template}
-                onSelect={handleSelectTemplate} />
-
+                <TemplateCard key={template.id} template={template} onSelect={handleSelectTemplate} />
               )}
             </div>
           </div>
-        </div>);
-
+        </div>
+      );
     }
 
     if (appStatus === 'upload' && selectedTemplate) {
       return (
         <div className="w-full">
-          <Button
-            variant="ghost"
-            onClick={handleStartOver}
-            className="mb-6 gap-2">
-            
+          <Button variant="ghost" onClick={handleStartOver} className="mb-6 gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Templates
           </Button>
-          
           <ReferenceInputCollector
             template={selectedTemplate}
             collectedInputs={collectedInputs}
             onInputsChange={setCollectedInputs}
             onGenerate={handleGenerateClick}
-            isGenerating={false} />
-          
-        </div>);
-
+            isGenerating={false}
+          />
+        </div>
+      );
     }
 
     if (appStatus === 'generating' && selectedTemplate) {
-      return (
-        <GeneratingState
-          template={selectedTemplate}
-          images={generatedImages} />);
-
-
+      return <GeneratingState template={selectedTemplate} images={generatedImages} />;
     }
 
     if (appStatus === 'review') {
@@ -468,9 +507,9 @@ const Index = () => {
           onRegenerate={handleRegenerateImage}
           onGenerateVideos={handleGenerateVideosClick}
           regeneratingId={regeneratingImageId}
-          isGeneratingVideos={false} />);
-
-
+          isGeneratingVideos={false}
+        />
+      );
     }
 
     return (
@@ -478,21 +517,16 @@ const Index = () => {
         status={appStatus as 'videos' | 'composing' | 'complete'}
         finalVideoUrl={finalVideoUrl}
         onStartOver={handleStartOver}
-        videoProgress={videoProgress} />);
-
-
+        videoProgress={videoProgress}
+      />
+    );
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-hidden relative">
       <MeshBackground />
       
-      <Header
-        view="studio"
-        setView={() => {}}
-        isMenuOpen={isMenuOpen}
-        setIsMenuOpen={setIsMenuOpen} />
-      
+      <Header view="studio" setView={() => {}} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
 
       <main className="flex-1 pt-14 lg:pt-16 w-full relative z-10">
         <div className="flex-1 flex flex-col items-center py-8 lg:py-16 px-6 animate-slide-up max-w-[1400px] mx-auto">
@@ -509,19 +543,19 @@ const Index = () => {
       <RegistrationModal
         isOpen={showRegistration}
         onClose={() => setShowRegistration(false)}
-        onComplete={handleRegistrationComplete} />
-      
+        onComplete={handleRegistrationComplete}
+      />
 
-      {selectedTemplate &&
-      <PaymentQRModal
-        isOpen={showPaymentQR}
-        onClose={() => setShowPaymentQR(false)}
-        onPaymentComplete={handlePaymentComplete}
-        template={selectedTemplate} />
-
-      }
-    </div>);
-
+      {selectedTemplate && (
+        <PaymentQRModal
+          isOpen={showPaymentQR}
+          onClose={() => setShowPaymentQR(false)}
+          onPaymentComplete={handlePaymentComplete}
+          template={selectedTemplate}
+        />
+      )}
+    </div>
+  );
 };
 
 export default Index;
