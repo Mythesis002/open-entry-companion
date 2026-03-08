@@ -19,33 +19,48 @@ export type Database = {
           ad_inputs: Json | null
           amount: number
           created_at: string
+          final_video_url: string | null
+          generated_images: Json | null
+          generated_videos: Json | null
+          generation_status: string | null
           id: string
           paid_at: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           status: string
+          template_id: string | null
           user_id: string
         }
         Insert: {
           ad_inputs?: Json | null
           amount?: number
           created_at?: string
+          final_video_url?: string | null
+          generated_images?: Json | null
+          generated_videos?: Json | null
+          generation_status?: string | null
           id?: string
           paid_at?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           status?: string
+          template_id?: string | null
           user_id: string
         }
         Update: {
           ad_inputs?: Json | null
           amount?: number
           created_at?: string
+          final_video_url?: string | null
+          generated_images?: Json | null
+          generated_videos?: Json | null
+          generation_status?: string | null
           id?: string
           paid_at?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           status?: string
+          template_id?: string | null
           user_id?: string
         }
         Relationships: []
