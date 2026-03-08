@@ -65,6 +65,110 @@ export type Database = {
         }
         Relationships: []
       }
+      seo_tool_votes: {
+        Row: {
+          created_at: string
+          id: string
+          tool_id: string
+          user_id: string
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tool_id: string
+          user_id: string
+          vote_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tool_id?: string
+          user_id?: string
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_tool_votes_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "seo_tools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_tools: {
+        Row: {
+          category: string
+          competitor_features: Json
+          created_at: string
+          description: string
+          downvotes: number
+          ease_of_trial_score: number
+          id: string
+          is_open_source: boolean
+          lsi_keywords: Json
+          meta_description: string
+          meta_title: string
+          opentry_features: Json
+          people_also_ask: Json
+          pricing_info: string
+          related_tool_slugs: Json
+          slug: string
+          status: string
+          tagline: string
+          tool_name: string
+          updated_at: string
+          upvotes: number
+        }
+        Insert: {
+          category?: string
+          competitor_features?: Json
+          created_at?: string
+          description?: string
+          downvotes?: number
+          ease_of_trial_score?: number
+          id?: string
+          is_open_source?: boolean
+          lsi_keywords?: Json
+          meta_description?: string
+          meta_title?: string
+          opentry_features?: Json
+          people_also_ask?: Json
+          pricing_info?: string
+          related_tool_slugs?: Json
+          slug: string
+          status?: string
+          tagline?: string
+          tool_name: string
+          updated_at?: string
+          upvotes?: number
+        }
+        Update: {
+          category?: string
+          competitor_features?: Json
+          created_at?: string
+          description?: string
+          downvotes?: number
+          ease_of_trial_score?: number
+          id?: string
+          is_open_source?: boolean
+          lsi_keywords?: Json
+          meta_description?: string
+          meta_title?: string
+          opentry_features?: Json
+          people_also_ask?: Json
+          pricing_info?: string
+          related_tool_slugs?: Json
+          slug?: string
+          status?: string
+          tagline?: string
+          tool_name?: string
+          updated_at?: string
+          upvotes?: number
+        }
+        Relationships: []
+      }
       social_connections: {
         Row: {
           access_token: string
