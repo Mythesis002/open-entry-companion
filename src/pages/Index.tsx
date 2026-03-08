@@ -324,6 +324,11 @@ const Index = () => {
   };
 
   const handleGenerateVideosClick = () => {
+    // If already paid (e.g., resuming after refresh), skip payment modal
+    if (paidTransactionId) {
+      generateVideos(paidTransactionId);
+      return;
+    }
     setShowPaymentQR(true);
   };
 
