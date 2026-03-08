@@ -51,7 +51,10 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
 
   return (
     <div 
-      onClick={() => onSelect(template)}
+      onClick={() => {
+        void incrementUsed();
+        onSelect(template);
+      }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className="group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl bg-card border border-border/50 hover:border-primary/20"
