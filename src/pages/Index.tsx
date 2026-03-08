@@ -90,10 +90,13 @@ const Index = () => {
   const [regeneratingImageId, setRegeneratingImageId] = useState<string | null>(null);
   const [paidTransactionId, setPaidTransactionId] = useState<string | null>(null);
 
-  // Restore workflow state on mount
+  // Restore workflow state on mount — from localStorage first, then check DB for paid transactions
   useEffect(() => {
+    if (!user) return;
+
+    // Step 1: Try localStorage
     const saved = loadWorkflowState();
-    if (saved && user) {
+    if (saved) {
       const template = REEL_TEMPLATES.find(t => t.id === saved.selectedTemplateId);
       if (template) {
         setSelectedTemplate(template);
@@ -101,17 +104,67 @@ const Index = () => {
         setPaidTransactionId(saved.paidTransactionId);
         setGeneratedVideos(saved.generatedVideos);
         setFinalVideoUrl(saved.finalVideoUrl);
-        // Restore to the appropriate step
         if (saved.appStatus === 'complete' && saved.finalVideoUrl) {
           setAppStatus('complete');
         } else if (saved.appStatus === 'review' || saved.appStatus === 'videos' || saved.appStatus === 'composing') {
-          // If was mid-video-gen or composing, go back to review so user can retry
           setAppStatus('review');
         } else {
           setAppStatus(saved.appStatus);
         }
+        return; // localStorage state found, don't check DB
       }
     }
+
+    // Step 2: Check DB for paid-but-unprocessed transactions (covers browser-close scenario)
+    const checkPaidTransactions = async () => {
+      try {
+        const { data: paidTxns, error } = await supabase
+          .from('ad_transactions')
+          .select('id, ad_inputs, status, generation_status, generated_images, final_video_url')
+          .eq('user_id', user.id)
+          .eq('status', 'completed')
+          .in('generation_status', ['pending', 'generating'])
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error || !paidTxns || paidTxns.length === 0) return;
+
+        const txn = paidTxns[0];
+        const adInputs = txn.ad_inputs as any;
+        const templateId = adInputs?.templateId;
+
+        if (!templateId) return;
+
+        const template = REEL_TEMPLATES.find(t => t.id === templateId);
+        if (!template) return;
+
+        // User has a paid transaction with no video generated — show resume
+        setPaidTransactionId(txn.id);
+        setSelectedTemplate(template);
+
+        // If images were saved in the transaction, restore them
+        const savedImages = txn.generated_images as GeneratedImage[] | null;
+        if (savedImages && Array.isArray(savedImages) && savedImages.length > 0) {
+          setGeneratedImages(savedImages);
+          setAppStatus('review');
+          toast({
+            title: '💰 Paid Order Found',
+            description: 'You have a paid order. Tap "Generate Videos" to continue — no extra charge!',
+          });
+        } else {
+          // Payment completed but no images — user needs to re-upload and generate
+          setAppStatus('upload');
+          toast({
+            title: '💰 Paid Order Found',
+            description: 'You have a paid order. Upload your photo and generate images — video generation is already paid!',
+          });
+        }
+      } catch (err) {
+        console.error('Error checking paid transactions:', err);
+      }
+    };
+
+    checkPaidTransactions();
   }, [user]);
 
   // Persist workflow state whenever key values change (after payment)
