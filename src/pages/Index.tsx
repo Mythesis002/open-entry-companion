@@ -118,12 +118,14 @@ const Index = () => {
     // Step 2: Check DB for paid-but-unprocessed transactions (covers browser-close scenario)
     const checkPaidTransactions = async () => {
       try {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data: paidTxns, error } = await supabase
           .from('ad_transactions')
           .select('id, ad_inputs, status, generation_status, generated_images, final_video_url')
           .eq('user_id', user.id)
           .eq('status', 'completed')
           .in('generation_status', ['pending', 'generating'])
+          .gte('paid_at', twentyFourHoursAgo)
           .order('created_at', { ascending: false })
           .limit(1);
 
