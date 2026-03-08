@@ -195,9 +195,10 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
       if (response.error) throw new Error(response.error.message);
 
       const { qr_id, image_url, short_url } = response.data;
+      console.log('Razorpay QR response:', { qr_id, image_url, short_url });
       setQrId(qr_id);
       setQrImageUrl(image_url);
-      setShortUrl(short_url);
+      setShortUrl(short_url || null);
       setPaymentStatus('ready');
 
       const now = Date.now();
