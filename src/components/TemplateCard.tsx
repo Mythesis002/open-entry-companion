@@ -22,7 +22,7 @@ export const TemplateCard = ({ template, onSelect }: TemplateCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { stats, userLiked, toggleLike } = useTemplateEngagement(template.id);
+  const { stats, userLiked, toggleLike, incrementUsed } = useTemplateEngagement(template.id);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
