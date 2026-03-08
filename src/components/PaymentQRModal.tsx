@@ -258,6 +258,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
       cleanupIntervals();
       setPaymentStatus('idle');
       setQrImageUrl(null);
+      setShortUrl(null);
       setQrId(null);
       setTransactionId(null);
       setTimeLeft(15 * 60 - 10);
