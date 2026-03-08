@@ -116,10 +116,10 @@ export function VideoCarousel() {
             Live Examples
           </span>
           <h2 className="text-4xl lg:text-5xl font-extrabold font-display tracking-tighter text-white">
-            Ads That Convert
+            Videos That Convert
           </h2>
           <p className="text-white/50 text-sm font-medium max-w-md mx-auto">
-            Click any video to play. Real AI-generated ads for real businesses.
+            Click any video to play. Real AI-generated videos for real businesses.
           </p>
         </div>
 
