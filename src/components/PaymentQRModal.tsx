@@ -327,8 +327,17 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
             </div>
 
             <div className="px-6 pb-4">
-              <div className="relative bg-white rounded-2xl p-4 shadow-lg mx-auto max-w-[280px]">
-                {qrImageUrl ? (
+              <div className="relative bg-card rounded-2xl p-5 shadow-lg mx-auto max-w-[260px]">
+                {shortUrl ? (
+                  <div className="flex items-center justify-center">
+                    <QRCodeSVG 
+                      value={shortUrl} 
+                      size={200} 
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
+                ) : qrImageUrl ? (
                   <img src={qrImageUrl} alt="Payment QR Code" className="w-full h-auto rounded-lg" />
                 ) : (
                   <div className="w-full aspect-square bg-muted/50 rounded-lg flex items-center justify-center">
