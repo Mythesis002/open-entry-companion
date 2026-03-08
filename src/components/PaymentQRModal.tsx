@@ -81,6 +81,7 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
           if (remaining > 0) {
             setQrId(pending.qrId);
             setQrImageUrl(pending.qrImageUrl);
+            setShortUrl(pending.shortUrl);
             setTransactionId(pending.transactionId);
             setTimeLeft(remaining);
             setPaymentStatus('ready');
