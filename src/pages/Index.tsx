@@ -143,7 +143,7 @@ const Index = () => {
         setSelectedTemplate(template);
 
         // If images were saved in the transaction, restore them
-        const savedImages = txn.generated_images as GeneratedImage[] | null;
+        const savedImages = txn.generated_images as unknown as GeneratedImage[] | null;
         if (savedImages && Array.isArray(savedImages) && savedImages.length > 0) {
           setGeneratedImages(savedImages);
           setAppStatus('review');
