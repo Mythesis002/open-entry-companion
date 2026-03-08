@@ -150,21 +150,6 @@ export const ReferenceInputCollector = ({
         </div>
       )}
 
-      {/* Shot Preview */}
-      <div className="bg-muted/30 rounded-2xl p-4 space-y-3">
-        <h4 className="font-semibold text-sm">🎬 This template generates {template.shots.length} shots:</h4>
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {template.shots.map((shot, i) => (
-            <div key={shot.id} className="aspect-[9/16] rounded-lg bg-muted/50 border border-border/50 flex flex-col items-center justify-center gap-1">
-              <span className="text-lg font-bold text-muted-foreground">{i + 1}</span>
-              <span className="text-[10px] text-muted-foreground">
-                {shot.useInputs.length} ref{shot.useInputs.length !== 1 ? 's' : ''}
-                {shot.presetReferenceImages?.length ? ` + ${shot.presetReferenceImages.length} scene` : ''}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Tips */}
       <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
