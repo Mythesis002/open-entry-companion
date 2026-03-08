@@ -179,6 +179,34 @@ const Index = () => {
         finalVideoUrl,
         savedAt: Date.now(),
       });
+
+      // Also save images to the DB transaction for recovery after browser close
+      if (generatedImages.length > 0 && generatedImages.every(img => img.status === 'complete')) {
+        supabase
+          .from('ad_transactions')
+          .update({ 
+            generated_images: generatedImages as any,
+            generation_status: appStatus === 'complete' ? 'complete' : 'generating'
+          })
+          .eq('id', paidTransactionId)
+          .then(({ error }) => {
+            if (error) console.error('Error saving images to transaction:', error);
+          });
+      }
+
+      // Save final video URL to DB
+      if (finalVideoUrl && appStatus === 'complete') {
+        supabase
+          .from('ad_transactions')
+          .update({ 
+            final_video_url: finalVideoUrl,
+            generation_status: 'complete'
+          })
+          .eq('id', paidTransactionId)
+          .then(({ error }) => {
+            if (error) console.error('Error saving final video to transaction:', error);
+          });
+      }
     }
   }, [appStatus, generatedImages, generatedVideos, finalVideoUrl, paidTransactionId, selectedTemplate]);
 
