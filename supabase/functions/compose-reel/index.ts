@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,27 @@ serve(async (req) => {
   }
 
   try {
+    // Auth verification
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log('Authenticated user for compose:', userId);
+
     const { videoUrls, templateId, renderId } = await req.json();
 
     const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
@@ -92,7 +114,6 @@ serve(async (req) => {
       throw new Error('Invalid Creatomate response - no render ID');
     }
 
-    // If already done (unlikely)
     if (render.status === 'succeeded' && render.url) {
       return new Response(
         JSON.stringify({ status: 'complete', videoUrl: render.url }),
@@ -100,7 +121,6 @@ serve(async (req) => {
       );
     }
 
-    // Return render ID for client-side polling
     return new Response(
       JSON.stringify({ status: 'rendering', renderId: render.id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

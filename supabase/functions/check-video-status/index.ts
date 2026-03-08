@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,24 @@ serve(async (req) => {
   }
 
   try {
+    // Auth verification
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const { requestId, statusUrl, responseUrl } = await req.json();
 
     if (!requestId || !statusUrl || !responseUrl) {
@@ -22,7 +41,6 @@ serve(async (req) => {
       throw new Error('FAL_KEY is not configured');
     }
 
-    // Use the exact status URL provided by fal.ai
     const statusResponse = await fetch(statusUrl, {
       method: 'GET',
       headers: { 'Authorization': `Key ${FAL_KEY}` }
@@ -46,7 +64,6 @@ serve(async (req) => {
     console.log('Status for', requestId, ':', statusData.status);
 
     if (statusData.status === 'COMPLETED') {
-      // Fetch the actual result using the response URL
       const resultResponse = await fetch(responseUrl, {
         method: 'GET',
         headers: { 'Authorization': `Key ${FAL_KEY}` }
@@ -79,7 +96,6 @@ serve(async (req) => {
       );
     }
 
-    // Still processing
     return new Response(
       JSON.stringify({ status: 'processing', queuePosition: statusData.queue_position }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
