@@ -152,9 +152,9 @@ export const ReferenceInputCollector = ({
 
 
       {/* Tips */}
-      <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
-        <h4 className="font-semibold text-sm">📸 Tips for best results:</h4>
-        <ul className="text-sm text-muted-foreground space-y-1.5">
+      <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 max-w-sm mx-auto">
+        <h4 className="font-semibold text-xs">📸 Tips for best results:</h4>
+        <ul className="text-xs text-muted-foreground space-y-1">
           {tips.map((tip, i) => (
             <li key={i}>• {tip}</li>
           ))}
