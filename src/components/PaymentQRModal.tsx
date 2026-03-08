@@ -22,6 +22,7 @@ interface PendingPayment {
   transactionId: string;
   qrId: string;
   qrImageUrl: string;
+  shortUrl: string;
   templateId: string;
   templateName: string;
   templatePrice: number;
