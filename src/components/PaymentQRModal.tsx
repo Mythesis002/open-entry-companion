@@ -327,27 +327,21 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
             </div>
 
             <div className="px-6 pb-4">
-              <div className="relative bg-card rounded-2xl p-5 shadow-lg mx-auto max-w-[240px]">
-                {(shortUrl || qrImageUrl) ? (
-                  <div className="flex items-center justify-center">
-                    <QRCodeSVG 
-                      value={shortUrl || `upi://pay?pa=${MERCHANT_VPA}&pn=Opentry&am=${template.price}&cu=INR&tn=${encodeURIComponent(`Video generation for ${template.name}`)}`}
-                      size={190} 
-                      level="H"
-                      includeMargin={false}
-                      bgColor="transparent"
-                    />
-                  </div>
+              <div className="relative mx-auto max-w-[280px] overflow-hidden rounded-2xl shadow-lg">
+                {qrImageUrl ? (
+                  <img src={qrImageUrl} alt="Payment QR Code" className="w-full h-auto" />
                 ) : (
                   <div className="w-full aspect-square bg-muted/50 rounded-lg flex items-center justify-center">
                     <QrCode className="w-16 h-16 text-muted-foreground/30" />
                   </div>
                 )}
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-medium shadow-md">
-                  Expires in {formatTime(timeLeft)}
+                <div className="absolute -bottom-0 left-0 right-0 flex justify-center pb-3">
+                  <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-medium shadow-md">
+                    Expires in {formatTime(timeLeft)}
+                  </span>
                 </div>
               </div>
-              <p className="text-center text-sm text-muted-foreground mt-6">Scan with any UPI app to pay</p>
+              <p className="text-center text-sm text-muted-foreground mt-5">Scan with any UPI app to pay</p>
             </div>
 
             <div className="flex items-center gap-4 px-6 py-2">
