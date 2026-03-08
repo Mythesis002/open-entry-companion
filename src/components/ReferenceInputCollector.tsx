@@ -65,14 +65,17 @@ export const ReferenceInputCollector = ({
   const hasPresets = template.shots.some(s => s.presetReferenceImages && s.presetReferenceImages.length > 0);
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-6">
-      <div className="text-center space-y-1.5">
-        <h2 className="text-xl font-semibold font-display">Upload Your Photos</h2>
-        <p className="text-sm text-muted-foreground">
-          {template.inputs.length} {template.inputs.length === 1 ? 'input' : 'inputs'} needed for <span className="font-medium text-foreground">{template.name}</span>
+    <div className="w-full max-w-md mx-auto space-y-8">
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Upload Your Photo
+        </h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {template.inputs.length} {template.inputs.length === 1 ? 'input' : 'inputs'} needed for{' '}
+          <span className="font-medium text-foreground">{template.name}</span>
         </p>
         {hasPresets && (
-          <p className="text-xs text-brand-saffron">
+          <p className="text-xs text-brand-saffron font-medium tracking-wide">
             ✨ Built-in scene references included
           </p>
         )}
@@ -80,11 +83,11 @@ export const ReferenceInputCollector = ({
 
       {/* Image Inputs */}
       {imageInputs.length > 0 && (
-        <div className={`grid ${imageInputs.length === 1 ? 'grid-cols-1 max-w-[200px] mx-auto' : 'grid-cols-2'} gap-3`}>
+        <div className={`grid ${imageInputs.length === 1 ? 'grid-cols-1 max-w-[220px] mx-auto' : 'grid-cols-2'} gap-4`}>
           {imageInputs.map((input) => (
-            <div key={input.id} className="aspect-square relative max-w-[180px] mx-auto w-full">
+            <div key={input.id} className="aspect-square relative max-w-[200px] mx-auto w-full">
               {collectedInputs[input.id] ? (
-                <div className="relative w-full h-full rounded-xl overflow-hidden group">
+                <div className="relative w-full h-full rounded-xl overflow-hidden group shadow-sm">
                   <img
                     src={collectedInputs[input.id]}
                     alt={input.label}
@@ -96,19 +99,19 @@ export const ReferenceInputCollector = ({
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                  <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/50 text-white text-[10px]">
+                  <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-black/50 text-white text-[11px] font-medium tracking-wide">
                     {input.label}
                   </div>
                 </div>
               ) : (
-                <label className="w-full h-full rounded-xl border-2 border-border hover:border-primary bg-muted/30 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors">
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <User className="w-6 h-6 text-muted-foreground" />
+                <label className="w-full h-full rounded-xl border-2 border-dashed border-border hover:border-primary/60 bg-muted/20 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all hover:bg-muted/40">
+                  <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-muted-foreground/70" />
                   </div>
-                  <div className="text-center px-2">
-                    <p className="text-xs font-medium">{input.label}</p>
+                  <div className="text-center px-3">
+                    <p className="text-sm font-medium text-foreground/80">{input.label}</p>
                     {input.description && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{input.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{input.description}</p>
                     )}
                   </div>
                   <input
@@ -127,23 +130,23 @@ export const ReferenceInputCollector = ({
 
       {/* Text Inputs */}
       {textInputs.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {textInputs.map((input) => (
-            <div key={input.id} className="space-y-1.5">
-              <Label htmlFor={input.id} className="text-xs font-semibold flex items-center gap-1.5">
+            <div key={input.id} className="space-y-2">
+              <Label htmlFor={input.id} className="text-sm font-medium flex items-center gap-1.5">
                 <Type className="w-3.5 h-3.5 text-brand-saffron" />
                 {input.label}
-                {input.required !== false && <span className="text-red-400">*</span>}
+                {input.required !== false && <span className="text-destructive">*</span>}
               </Label>
               {input.description && (
-                <p className="text-[10px] text-muted-foreground">{input.description}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{input.description}</p>
               )}
               <Input
                 id={input.id}
                 placeholder={input.label}
                 value={collectedInputs[input.id] || ''}
                 onChange={(e) => handleTextChange(input.id, e.target.value)}
-                className="h-10 text-sm"
+                className="h-11 text-sm"
               />
             </div>
           ))}
@@ -151,11 +154,14 @@ export const ReferenceInputCollector = ({
       )}
 
       {/* Tips */}
-      <div className="bg-muted/50 rounded-lg p-2.5 space-y-1 max-w-xs mx-auto">
-        <h4 className="font-medium text-[11px]">📸 Tips for best results:</h4>
-        <ul className="text-[10px] text-muted-foreground space-y-0.5">
+      <div className="bg-muted/30 rounded-xl p-4 space-y-2 max-w-sm mx-auto border border-border/50">
+        <h4 className="font-medium text-xs text-foreground/70 uppercase tracking-wider">📸 Tips for best results</h4>
+        <ul className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
           {tips.map((tip, i) => (
-            <li key={i}>• {tip}</li>
+            <li key={i} className="flex items-start gap-1.5">
+              <span className="text-brand-gold mt-0.5">•</span>
+              <span>{tip}</span>
+            </li>
           ))}
         </ul>
       </div>
@@ -163,7 +169,7 @@ export const ReferenceInputCollector = ({
       <Button
         onClick={onGenerate}
         disabled={!allRequiredFilled || isGenerating}
-        className="w-full h-11 text-sm font-bold rounded-xl bg-gradient-to-r from-brand-saffron to-brand-maroon hover:from-brand-saffron/90 hover:to-brand-maroon/90 text-white border-0"
+        className="w-full h-12 text-sm font-semibold rounded-xl bg-gradient-to-r from-brand-saffron to-brand-maroon hover:from-brand-saffron/90 hover:to-brand-maroon/90 text-white border-0 tracking-wide shadow-sm"
       >
         {isGenerating ? (
           <span className="flex items-center gap-2">
@@ -171,7 +177,7 @@ export const ReferenceInputCollector = ({
           </span>
         ) : (
           <>
-            <Upload className="w-4 h-4 mr-1.5" />
+            <Upload className="w-4 h-4 mr-2" />
             Generate {template.shots.length} Shots
           </>
         )}
