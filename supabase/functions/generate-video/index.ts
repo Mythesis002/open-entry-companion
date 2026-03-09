@@ -78,9 +78,9 @@ serve(async (req) => {
       throw new Error('FAL_KEY is not configured');
     }
 
-    const modelId = 'fal-ai/ltx-2-19b/image-to-video';
+    const modelId = 'fal-ai/ltx-2.3/image-to-video/fast';
 
-    console.log('Submitting image-to-video job to fal.ai');
+    console.log('Submitting image-to-video job to fal.ai (LTX 2.3 fast)');
 
     const submitResponse = await fetch(`https://queue.fal.run/${modelId}`, {
       method: 'POST',
@@ -91,10 +91,11 @@ serve(async (req) => {
       body: JSON.stringify({
         prompt: prompt || 'Smooth cinematic motion, slow camera movement',
         image_url: imageUrl,
-        num_frames: 121,
-        frame_rate: 24,
-        width: 512,
-        height: 768
+        duration: 6,
+        resolution: '1080p',
+        aspect_ratio: '9:16',
+        fps: 25,
+        generate_audio: false
       })
     });
 
