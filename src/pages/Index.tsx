@@ -213,7 +213,7 @@ const Index = () => {
   }, [appStatus, generatedImages, generatedVideos, finalVideoUrl, paidTransactionId, selectedTemplate]);
 
   const handleSelectTemplate = (template: ReelTemplate) => {
-    if (!user || !isRegistered()) {
+    if (!user) {
       setShowRegistration(true);
       return;
     }
