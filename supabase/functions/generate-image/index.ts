@@ -18,14 +18,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const anonClient = createClient(
+      SUPABASE_URL,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -38,78 +41,118 @@ serve(async (req) => {
     console.log('Generating image with prompt:', prompt.substring(0, 100) + '...');
     console.log('Reference images count:', referenceImages?.length || 0);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const FAL_KEY = Deno.env.get('FAL_KEY');
+    if (!FAL_KEY) {
+      throw new Error('FAL_KEY is not configured');
     }
 
-    // Build message content with reference images
-    const content: any[] = [
-      {
-        type: 'text',
-        text: `Generate an image based on this description. Use the provided reference photos to match the subject accurately in the generated image.
-
-IMPORTANT: The generated image should feature the SAME subject from the reference photos.
-
-Description: ${prompt}`
-      }
-    ];
-
-    // Add reference images
-    if (referenceImages && referenceImages.length > 0) {
-      for (const imgUrl of referenceImages) {
-        content.push({
-          type: 'image_url',
-          image_url: { url: imgUrl }
-        });
-      }
+    if (!referenceImages || referenceImages.length === 0) {
+      throw new Error('At least one reference image is required for seedream edit');
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Upload base64 images to Supabase storage to get public URLs for fal.ai
+    const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const imageUrls: string[] = [];
+
+    for (let i = 0; i < referenceImages.length; i++) {
+      const imgData = referenceImages[i];
+      
+      // If already a URL (not base64), use directly
+      if (imgData.startsWith('http://') || imgData.startsWith('https://')) {
+        imageUrls.push(imgData);
+        continue;
+      }
+
+      // Extract base64 data and mime type
+      const matches = imgData.match(/^data:(.+);base64,(.+)$/);
+      if (!matches) {
+        console.error('Invalid image data format for image', i);
+        throw new Error('Invalid image data format');
+      }
+
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const ext = mimeType.includes('png') ? 'png' : 'jpg';
+      const fileName = `temp-refs/${userId}/${Date.now()}-${i}.${ext}`;
+
+      // Decode base64 to Uint8Array
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let j = 0; j < binaryString.length; j++) {
+        bytes[j] = binaryString.charCodeAt(j);
+      }
+
+      const { error: uploadError } = await serviceClient.storage
+        .from('generated-images')
+        .upload(fileName, bytes, { contentType: mimeType, upsert: true });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error('Failed to upload reference image');
+      }
+
+      const { data: urlData } = serviceClient.storage
+        .from('generated-images')
+        .getPublicUrl(fileName);
+
+      imageUrls.push(urlData.publicUrl);
+      console.log(`Uploaded reference image ${i} to storage`);
+    }
+
+    console.log('Submitting to fal.ai seedream v4 edit with', imageUrls.length, 'images');
+
+    // Call fal.ai seedream v4 edit (synchronous endpoint)
+    const falResponse = await fetch('https://fal.run/fal-ai/bytedance/seedream/v4/edit', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Key ${FAL_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-pro-image-preview',
-        messages: [{ role: 'user', content }],
-        modalities: ['image', 'text']
+        prompt: prompt,
+        image_urls: imageUrls,
+        image_size: { width: 1080, height: 1920 },
+        seed: Math.floor(Math.random() * 2147483647),
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
-      
-      if (response.status === 429) {
+    if (!falResponse.ok) {
+      const errorText = await falResponse.text();
+      console.error('fal.ai seedream error:', falResponse.status, errorText);
+
+      if (falResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`AI Gateway error: ${response.status}`);
+
+      throw new Error(`fal.ai error: ${falResponse.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('AI response received:', JSON.stringify(data).substring(0, 200));
+    const data = await falResponse.json();
+    console.log('fal.ai response received:', JSON.stringify(data).substring(0, 300));
 
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    if (!imageData) {
-      console.error('No image in response:', JSON.stringify(data).substring(0, 500));
-      throw new Error('No image generated - model may have declined the request');
+    // seedream returns { images: [{ url, content_type, width, height }] }
+    const generatedImageUrl = data.images?.[0]?.url;
+
+    if (!generatedImageUrl) {
+      console.error('No image in fal.ai response:', JSON.stringify(data).substring(0, 500));
+      throw new Error('No image generated by seedream model');
+    }
+
+    // Clean up temp reference images from storage (fire and forget)
+    for (const url of imageUrls) {
+      if (url.includes('temp-refs/')) {
+        const path = url.split('/generated-images/')[1];
+        if (path) {
+          serviceClient.storage.from('generated-images').remove([path]).catch(() => {});
+        }
+      }
     }
 
     return new Response(
-      JSON.stringify({ imageUrl: imageData }),
+      JSON.stringify({ imageUrl: generatedImageUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
