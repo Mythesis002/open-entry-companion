@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // SERVER-SIDE source of truth for template prices
 const TEMPLATE_PRICES: Record<string, number> = {
-  'car-sinking': 1,
+  'car-sinking': 48,
 };
 
 interface QRRequest {
