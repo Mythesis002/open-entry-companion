@@ -149,7 +149,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no code blocks.`
       body: JSON.stringify({
         prompt: adPlan.adPrompt,
         image_urls: [productImageUrl],
-        image_size: { width: 1080, height: 1080 },
+        image_size: { width: imgWidth, height: imgHeight },
         seed: Math.floor(Math.random() * 2147483647),
       }),
     });

@@ -1,29 +1,21 @@
-import { useState, useRef } from 'react';
-import { Upload, Sparkles, Download, RotateCcw, ImageIcon, Palette, Type, Target } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { AdFormatSelector } from '@/components/product-ad/AdFormatSelector';
+import { GenerationProgress } from '@/components/product-ad/GenerationProgress';
+import { AdResultView } from '@/components/product-ad/AdResultView';
+import { AD_FORMATS, type AdPlan, type AdFormat, type GenerationStep } from '@/components/product-ad/types';
 
-interface AdPlan {
-  productName: string;
-  productCategory: string;
-  colors: string[];
-  suggestedBackground: string;
-  suggestedLighting: string;
-  suggestedMood: string;
-  headline: string;
-  subheadline: string;
-  ctaText: string;
-  adPrompt: string;
-}
-
-type Stage = 'upload' | 'analyzing' | 'result';
+type Stage = 'upload' | 'generating' | 'result';
 
 export function ProductAdGenerator() {
   const [stage, setStage] = useState<Stage>('upload');
   const [productImage, setProductImage] = useState<string | null>(null);
+  const [adFormat, setAdFormat] = useState<AdFormat>('square');
+  const [currentStep, setCurrentStep] = useState<GenerationStep>('uploading');
   const [adPlan, setAdPlan] = useState<AdPlan | null>(null);
   const [generatedAdUrl, setGeneratedAdUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,30 +32,52 @@ export function ProductAdGenerator() {
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     if (!productImage) return;
-
     if (!user) {
       toast({ title: 'Sign in required', description: 'Please sign in to generate product ads.', variant: 'destructive' });
       return;
     }
 
+    const formatConfig = AD_FORMATS.find((f) => f.id === adFormat)!;
+
     setIsLoading(true);
-    setStage('analyzing');
+    setStage('generating');
+    setCurrentStep('uploading');
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
+      // Simulate step progression with SSE-like timing
+      setCurrentStep('analyzing');
+      
       const response = await supabase.functions.invoke('generate-product-ad', {
-        body: { productImage },
+        body: {
+          productImage,
+          width: formatConfig.width,
+          height: formatConfig.height,
+          format: adFormat,
+        },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
       if (response.error) throw new Error(response.error.message || 'Generation failed');
 
-      const { adPlan: plan, generatedImageUrl } = response.data;
-      setAdPlan(plan);
+      const { adPlan: plan, generatedImageUrl, step } = response.data;
+
+      // Show planning step briefly
+      if (plan) {
+        setCurrentStep('planning');
+        setAdPlan(plan);
+        await new Promise((r) => setTimeout(r, 1000));
+        setCurrentStep('generating');
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      setCurrentStep('finalizing');
+      await new Promise((r) => setTimeout(r, 800));
+
       setGeneratedAdUrl(generatedImageUrl);
       setStage('result');
       toast({ title: '✨ Ad created!', description: `Product ad for "${plan.productName}" is ready.` });
@@ -74,129 +88,24 @@ export function ProductAdGenerator() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [productImage, user, adFormat, toast]);
 
   const handleReset = () => {
     setStage('upload');
     setProductImage(null);
     setAdPlan(null);
     setGeneratedAdUrl(null);
+    setCurrentStep('uploading');
   };
 
-  const handleDownload = async () => {
-    if (!generatedAdUrl) return;
-    try {
-      const res = await fetch(generatedAdUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `product-ad-${Date.now()}.jpg`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast({ title: 'Download failed', variant: 'destructive' });
-    }
-  };
-
-  if (stage === 'analyzing') {
-    return (
-      <div className="w-full max-w-2xl mx-auto text-center space-y-6 py-12">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center animate-pulse">
-          <Sparkles className="w-10 h-10 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold font-display">Analyzing Your Product...</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          AI is studying your product, planning colors, environment, text, and creating the perfect ad image.
-        </p>
-        <div className="flex justify-center gap-3 flex-wrap">
-          {['Detecting product', 'Planning colors', 'Designing layout', 'Generating image'].map((step, i) => (
-            <span key={i} className="px-3 py-1.5 rounded-full bg-muted text-xs font-medium text-muted-foreground animate-pulse" style={{ animationDelay: `${i * 0.3}s` }}>
-              {step}
-            </span>
-          ))}
-        </div>
-        {productImage && (
-          <div className="w-32 h-32 mx-auto rounded-xl overflow-hidden border border-border opacity-60">
-            <img src={productImage} alt="Product" className="w-full h-full object-cover" />
-          </div>
-        )}
-      </div>
-    );
+  if (stage === 'generating') {
+    return <GenerationProgress currentStep={currentStep} productImage={productImage} />;
   }
 
   if (stage === 'result' && adPlan && generatedAdUrl) {
-    return (
-      <div className="w-full max-w-4xl mx-auto space-y-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold font-display">Your Product Ad is Ready! ✨</h2>
-          <p className="text-muted-foreground">AI analyzed your product and created a professional ad image.</p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Generated Ad */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Generated Ad</h3>
-            <div className="rounded-2xl overflow-hidden border border-border shadow-lg">
-              <img src={generatedAdUrl} alt="Generated ad" className="w-full aspect-square object-cover" />
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={handleDownload} className="flex-1 gap-2">
-                <Download className="w-4 h-4" /> Download
-              </Button>
-              <Button onClick={handleReset} variant="outline" className="gap-2">
-                <RotateCcw className="w-4 h-4" /> New Ad
-              </Button>
-            </div>
-          </div>
-
-          {/* Ad Plan Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">AI Creative Plan</h3>
-            <div className="space-y-3">
-              <Card className="p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <ImageIcon className="w-4 h-4 text-primary" /> Product
-                </div>
-                <p className="text-sm text-muted-foreground">{adPlan.productName} • {adPlan.productCategory}</p>
-              </Card>
-
-              <Card className="p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Palette className="w-4 h-4 text-primary" /> Style
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {adPlan.colors?.map((c, i) => (
-                    <span key={i} className="px-2 py-1 rounded-full bg-muted text-xs">{c}</span>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">{adPlan.suggestedBackground} • {adPlan.suggestedLighting} • {adPlan.suggestedMood}</p>
-              </Card>
-
-              <Card className="p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Type className="w-4 h-4 text-primary" /> Copy
-                </div>
-                <p className="font-bold text-foreground">{adPlan.headline}</p>
-                <p className="text-sm text-muted-foreground">{adPlan.subheadline}</p>
-              </Card>
-
-              <Card className="p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Target className="w-4 h-4 text-primary" /> Call to Action
-                </div>
-                <span className="inline-block px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                  {adPlan.ctaText}
-                </span>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <AdResultView adPlan={adPlan} generatedAdUrl={generatedAdUrl} onReset={handleReset} />;
   }
 
-  // Upload stage
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8">
       <div className="text-center space-y-3">
@@ -226,16 +135,13 @@ export function ProductAdGenerator() {
               <p className="font-medium">Upload Product Photo</p>
               <p className="text-sm text-muted-foreground">Clear, well-lit photo works best</p>
             </div>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
+            <input ref={inputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
           </label>
         )}
       </div>
+
+      {/* Format selector */}
+      <AdFormatSelector selected={adFormat} onChange={setAdFormat} />
 
       <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
         <h4 className="font-semibold text-sm">💡 Tips for best results:</h4>
