@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ToolPage from "./pages/ToolPage";
 import ToolsDirectory from "./pages/ToolsDirectory";
+import ProductAd from "./pages/ProductAd";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
