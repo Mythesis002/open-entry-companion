@@ -51,6 +51,7 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
         </div>
         
         <nav className="hidden lg:flex items-center gap-6">
+          <button onClick={() => navigate('/product-ad')} className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1">✨ Product Ads</button>
           <button onClick={() => scrollTo('how-it-works')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</button>
           <button onClick={() => scrollTo('faq')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</button>
           
