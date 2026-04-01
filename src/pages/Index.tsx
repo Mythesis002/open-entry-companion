@@ -554,6 +554,21 @@ const Index = () => {
             </p>
           </div>
 
+          {/* Product Ad Tool Banner */}
+          <button
+            onClick={() => navigate('/product-ad')}
+            className="w-full rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5 p-5 flex items-center gap-4 hover:border-primary/60 hover:shadow-lg transition-all group text-left"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-foreground text-sm lg:text-base">Product Ad Image Generator</h3>
+              <p className="text-xs lg:text-sm text-muted-foreground truncate">Upload product → AI creates professional ad images instantly</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+          </button>
+
           <div>
             <h2 className="text-xl font-bold mb-6">
               <DiyaIcon size={18} className="text-brand-saffron inline mr-2" />
