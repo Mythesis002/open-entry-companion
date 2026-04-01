@@ -25,6 +25,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/try" element={<ToolsDirectory />} />
             <Route path="/try/:slug" element={<ToolPage />} />
+            <Route path="/product-ad" element={<ProductAd />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
