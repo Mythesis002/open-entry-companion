@@ -18,7 +18,8 @@ import { useUserCredits } from '@/hooks/useUserCredits';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { REEL_TEMPLATES } from '@/data/templates';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import type { ReelTemplate, GeneratedImage, CollectedInputs } from '@/types';
 
