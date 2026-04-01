@@ -72,6 +72,7 @@ const getAuthHeaders = async () => {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [showPaymentQR, setShowPaymentQR] = useState(false);
