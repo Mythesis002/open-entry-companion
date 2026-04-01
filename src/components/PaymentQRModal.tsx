@@ -56,8 +56,8 @@ export function PaymentQRModal({ isOpen, onClose, onPaymentComplete, template }:
   const [qrId, setQrId] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60 - 10);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isPollingRef = useRef(false);
   
   const { user } = useAuth();

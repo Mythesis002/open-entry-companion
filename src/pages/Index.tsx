@@ -18,7 +18,8 @@ import { useUserCredits } from '@/hooks/useUserCredits';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { REEL_TEMPLATES } from '@/data/templates';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import type { ReelTemplate, GeneratedImage, CollectedInputs } from '@/types';
 
@@ -71,6 +72,7 @@ const getAuthHeaders = async () => {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [showPaymentQR, setShowPaymentQR] = useState(false);
@@ -551,6 +553,21 @@ const Index = () => {
               Pick a trending template, upload your photo, and get a ready-to-post reel in minutes.
             </p>
           </div>
+
+          {/* Product Ad Tool Banner */}
+          <button
+            onClick={() => navigate('/product-ad')}
+            className="w-full rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5 p-5 flex items-center gap-4 hover:border-primary/60 hover:shadow-lg transition-all group text-left"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-foreground text-sm lg:text-base">Product Ad Image Generator</h3>
+              <p className="text-xs lg:text-sm text-muted-foreground truncate">Upload product → AI creates professional ad images instantly</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+          </button>
 
           <div>
             <h2 className="text-xl font-bold mb-6">

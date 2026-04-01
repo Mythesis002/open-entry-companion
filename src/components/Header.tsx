@@ -51,6 +51,7 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
         </div>
         
         <nav className="hidden lg:flex items-center gap-6">
+          <button onClick={() => navigate('/product-ad')} className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1">✨ Product Ads</button>
           <button onClick={() => scrollTo('how-it-works')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</button>
           <button onClick={() => scrollTo('faq')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</button>
           
@@ -110,6 +111,7 @@ export function Header({ view, setView, isMenuOpen, setIsMenuOpen }: HeaderProps
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="fixed inset-x-0 top-14 z-[99] bg-background/95 backdrop-blur-lg border-b border-border p-6 space-y-4 lg:hidden animate-slide-up">
+          <button onClick={() => { setIsMenuOpen(false); navigate('/product-ad'); }} className="block w-full text-left text-sm font-semibold py-2 text-primary">✨ Product Ads Generator</button>
           <button onClick={() => scrollTo('how-it-works')} className="block w-full text-left text-sm font-medium py-2 hover:text-primary transition-colors">How It Works</button>
           <button onClick={() => scrollTo('faq')} className="block w-full text-left text-sm font-medium py-2 hover:text-primary transition-colors">FAQ</button>
           {!user && (
