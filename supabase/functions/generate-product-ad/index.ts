@@ -30,10 +30,12 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { productImage } = await req.json();
+    const { productImage, width = 1080, height = 1080, format = 'square' } = await req.json();
     if (!productImage) {
       return new Response(JSON.stringify({ error: 'Product image is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    const imgWidth = Math.min(Math.max(Number(width) || 1080, 512), 1920);
+    const imgHeight = Math.min(Math.max(Number(height) || 1080, 512), 1920);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
@@ -147,7 +149,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no code blocks.`
       body: JSON.stringify({
         prompt: adPlan.adPrompt,
         image_urls: [productImageUrl],
-        image_size: { width: 1080, height: 1080 },
+        image_size: { width: imgWidth, height: imgHeight },
         seed: Math.floor(Math.random() * 2147483647),
       }),
     });
