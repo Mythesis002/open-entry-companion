@@ -84,7 +84,7 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
                   <span key={i} className="px-2 py-1 rounded-full bg-muted text-xs">{c}</span>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">{adPlan.suggestedBackground} • {adPlan.suggestedLighting} • {adPlan.suggestedMood}</p>
+              <p className="text-xs text-muted-foreground">{toStr(adPlan.suggestedBackground)} • {toStr(adPlan.suggestedLighting)} • {toStr(adPlan.suggestedMood)}</p>
               {adPlan.designStyle && (
                 <p className="text-xs font-medium text-muted-foreground">Design: {adPlan.designStyle}</p>
               )}
