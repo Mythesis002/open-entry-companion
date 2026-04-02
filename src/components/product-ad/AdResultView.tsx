@@ -59,6 +59,12 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
                 <ImageIcon className="w-4 h-4 text-primary" /> Product
               </div>
               <p className="text-sm text-muted-foreground">{adPlan.productName} • {adPlan.productCategory}</p>
+              {adPlan.targetAudience && (
+                <p className="text-xs text-muted-foreground">🎯 {adPlan.targetAudience}</p>
+              )}
+              {adPlan.emotionalTrigger && (
+                <p className="text-xs text-muted-foreground">💡 Trigger: {adPlan.emotionalTrigger}</p>
+              )}
             </Card>
             <Card className="p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -70,6 +76,9 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">{adPlan.suggestedBackground} • {adPlan.suggestedLighting} • {adPlan.suggestedMood}</p>
+              {adPlan.designStyle && (
+                <p className="text-xs font-medium text-muted-foreground">Design: {adPlan.designStyle}</p>
+              )}
             </Card>
             <Card className="p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -77,6 +86,9 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
               </div>
               <p className="font-bold text-foreground">{adPlan.headline}</p>
               <p className="text-sm text-muted-foreground">{adPlan.subheadline}</p>
+              {adPlan.priceTag && (
+                <span className="inline-block px-3 py-1 rounded-lg bg-accent text-accent-foreground text-sm font-bold">{adPlan.priceTag}</span>
+              )}
             </Card>
             <Card className="p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
