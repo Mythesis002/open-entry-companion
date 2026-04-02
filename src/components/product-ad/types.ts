@@ -1,13 +1,19 @@
 export interface AdPlan {
   productName: string;
   productCategory: string;
+  targetAudience?: string;
+  emotionalTrigger?: string;
   colors: string[];
+  brandColors?: string[];
   suggestedBackground: string;
   suggestedLighting: string;
   suggestedMood: string;
   headline: string;
   subheadline: string;
   ctaText: string;
+  priceTag?: string;
+  designStyle?: string;
+  textPlacement?: string;
   adPrompt: string;
 }
 
