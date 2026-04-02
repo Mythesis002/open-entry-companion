@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Sparkles } from 'lucide-react';
+import { Upload, Sparkles, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +26,10 @@ export function ProductAdGenerator() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Please use an image under 10MB.', variant: 'destructive' });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => setProductImage(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -49,9 +53,8 @@ export function ProductAdGenerator() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
-      // Simulate step progression with SSE-like timing
       setCurrentStep('analyzing');
-      
+
       const response = await supabase.functions.invoke('generate-product-ad', {
         body: {
           productImage,
@@ -64,23 +67,22 @@ export function ProductAdGenerator() {
 
       if (response.error) throw new Error(response.error.message || 'Generation failed');
 
-      const { adPlan: plan, generatedImageUrl, step } = response.data;
+      const { adPlan: plan, generatedImageUrl } = response.data;
 
-      // Show planning step briefly
       if (plan) {
         setCurrentStep('planning');
         setAdPlan(plan);
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 800));
         setCurrentStep('generating');
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 400));
       }
 
       setCurrentStep('finalizing');
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
 
       setGeneratedAdUrl(generatedImageUrl);
       setStage('result');
-      toast({ title: '✨ Ad created!', description: `Product ad for "${plan.productName}" is ready.` });
+      toast({ title: '✨ Ad created!', description: 'Your product ad is ready to download.' });
     } catch (err: any) {
       console.error('Generation error:', err);
       toast({ title: 'Generation failed', description: err.message || 'Something went wrong', variant: 'destructive' });
@@ -106,34 +108,32 @@ export function ProductAdGenerator() {
     return <AdResultView adPlan={adPlan} generatedAdUrl={generatedAdUrl} onReset={handleReset} />;
   }
 
-  return (
-    <div className="w-full max-w-2xl mx-auto space-y-8">
-      <div className="text-center space-y-3">
-        <h2 className="text-3xl font-bold font-display">Product Ad Generator</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Upload your product photo — AI will analyze it and create a stunning ad image with the perfect colors, background, and copy.
-        </p>
-      </div>
+  const selectedFormat = AD_FORMATS.find((f) => f.id === adFormat)!;
 
-      <div className="aspect-square max-w-sm mx-auto">
+  return (
+    <div className="w-full max-w-lg mx-auto space-y-6">
+      {/* Upload area */}
+      <div className="aspect-[4/3] w-full">
         {productImage ? (
-          <div className="relative w-full h-full rounded-2xl overflow-hidden group border border-border">
-            <img src={productImage} alt="Product" className="w-full h-full object-cover" />
-            <button
-              onClick={() => setProductImage(null)}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              ✕
-            </button>
+          <div className="relative w-full h-full rounded-2xl overflow-hidden group border border-border bg-muted/10">
+            <img src={productImage} alt="Product" className="w-full h-full object-contain p-4" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <button
+                onClick={() => setProductImage(null)}
+                className="px-4 py-2 rounded-xl bg-background/90 text-foreground text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+              >
+                Change Photo
+              </button>
+            </div>
           </div>
         ) : (
-          <label className="w-full h-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 flex flex-col items-center justify-center gap-4 cursor-pointer transition-colors">
-            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
-              <Upload className="w-10 h-10 text-muted-foreground" />
+          <label className="w-full h-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/20 hover:bg-muted/30 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <ImagePlus className="w-8 h-8 text-primary" />
             </div>
-            <div className="text-center">
-              <p className="font-medium">Upload Product Photo</p>
-              <p className="text-sm text-muted-foreground">Clear, well-lit photo works best</p>
+            <div className="text-center space-y-1">
+              <p className="font-semibold text-foreground">Upload Product Photo</p>
+              <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
             </div>
             <input ref={inputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
           </label>
@@ -143,25 +143,21 @@ export function ProductAdGenerator() {
       {/* Format selector */}
       <AdFormatSelector selected={adFormat} onChange={setAdFormat} />
 
-      <div className="bg-muted/50 rounded-2xl p-5 space-y-3">
-        <h4 className="font-semibold text-sm">💡 Tips for best results:</h4>
-        <ul className="text-sm text-muted-foreground space-y-1.5">
-          <li>• Use a clean, well-lit product photo</li>
-          <li>• White or plain background works best</li>
-          <li>• Show the product from its best angle</li>
-          <li>• Higher resolution = better ad quality</li>
-        </ul>
-      </div>
-
+      {/* Generate button */}
       <Button
         onClick={handleGenerate}
         disabled={!productImage || isLoading}
         size="lg"
-        className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground border-0"
+        className="w-full h-14 text-base font-bold rounded-2xl bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground border-0 gap-2"
       >
-        <Sparkles className="w-5 h-5 mr-2" />
-        Generate Product Ad
+        <Sparkles className="w-5 h-5" />
+        Generate {selectedFormat.label} Ad ({selectedFormat.dimensions})
       </Button>
+
+      {/* Tips */}
+      <p className="text-center text-xs text-muted-foreground">
+        Use a clean, well-lit photo with plain background for best results
+      </p>
     </div>
   );
 }

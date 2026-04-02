@@ -37,7 +37,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-    // Step 1: Upload product image to get a public URL for analysis
+    // Upload product image to get a public URL
     const serviceClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     let productImageUrl = productImage;
 
@@ -66,9 +66,9 @@ serve(async (req) => {
       productImageUrl = urlData.publicUrl;
     }
 
-    console.log('Step 1: Deep product analysis with marketing psychology AI...');
+    console.log(`Analyzing product for ${format} (${width}x${height})...`);
 
-    // Step 2: Deep product analysis with expert marketing psychology
+    // Step 1: Deep product analysis
     const analysisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -80,53 +80,41 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a world-class advertising creative director, consumer psychologist, and graphic designer with 25+ years of experience creating award-winning product advertisements for brands like Apple, Nike, Coca-Cola, and luxury fashion houses.
+            content: `You are an elite advertising creative director with 25+ years creating ads for top global brands.
 
-Your expertise combines:
-- **Consumer Psychology**: Understanding emotional triggers, color psychology, visual hierarchy, attention patterns, and purchase motivation
-- **Graphic Design Mastery**: Typography, composition, negative space, visual balance, contrast ratios, and brand identity
-- **Copywriting Excellence**: Headlines that stop scrollers, emotional hooks, urgency creation, benefit-focused messaging
-- **Marketing Strategy**: Target audience identification, positioning, competitive differentiation, and conversion optimization
+Analyze the product image and create a perfect ad creative plan.
 
-Analyze the product image with extreme depth and create a comprehensive advertising creative plan.
+CRITICAL RULES:
+- DO NOT invent or guess any price. Set priceTag to empty string "" always. The user will add pricing themselves.
+- targetAudience MUST be a simple string like "Young professionals aged 25-35" — NOT an object.
+- emotionalTrigger MUST be a simple string like "Aspiration and confidence" — NOT an object.
+- All fields must be simple strings, arrays of strings, or empty strings. NO nested objects anywhere.
+- The ad dimensions are exactly ${width}x${height} pixels (${format} format). Design the composition specifically for this aspect ratio.
 
-Return a JSON object with these fields:
-- productName: exact product name/type detected
-- productCategory: category (electronics, fashion, food, beauty, home, fitness, luxury, etc.)
-- targetAudience: who would buy this (age, gender, lifestyle, income level)
-- emotionalTrigger: the primary emotion to leverage (aspiration, FOMO, joy, trust, exclusivity, comfort)
-- colors: array of 3-5 dominant colors detected in the product (hex codes)
-- brandColors: array of 2-3 suggested complementary colors for the ad background/accents that create maximum contrast and visual appeal with the product
-- suggestedBackground: detailed background description (gradient direction, texture, environment, depth)
-- suggestedLighting: specific lighting setup (rim light, soft diffused, dramatic spotlight, golden hour, studio)
-- suggestedMood: mood with reasoning (luxurious, energetic, minimal-modern, warm-cozy, bold-confident, elegant-sophisticated)
-- headline: powerful ad headline (max 5 words) that creates instant desire using psychological triggers
-- subheadline: benefit-focused supporting text (max 8 words) that reinforces the headline
-- ctaText: high-converting call to action (max 3 words) using action verbs and urgency
-- priceTag: suggest a realistic price display format if applicable (e.g., "₹999", "$49.99", or "" if not applicable)
-- designStyle: the overall graphic design approach (minimalist-luxury, bold-vibrant, clean-corporate, lifestyle-aspirational, premium-dark, fresh-modern)
-- textPlacement: where text should go relative to the product (top-center, bottom-left, right-side, overlay-center)
-- adPrompt: A masterfully detailed image generation prompt (250-350 words) that will produce a PROFESSIONAL ADVERTISING IMAGE. This prompt MUST include ALL of the following elements:
+Return a JSON object with these exact fields (all strings unless noted):
+- productName: string — detected product name/type
+- productCategory: string — category
+- targetAudience: string — who would buy this (simple description)
+- emotionalTrigger: string — primary emotion to leverage (simple description)
+- colors: string[] — 3-5 dominant hex colors from the product
+- brandColors: string[] — 2-3 complementary hex colors for ad background
+- suggestedBackground: string — background description
+- suggestedLighting: string — lighting setup
+- suggestedMood: string — mood description
+- headline: string — powerful headline (max 5 words)
+- subheadline: string — supporting text (max 8 words)
+- ctaText: string — call to action (max 3 words)
+- priceTag: "" (always empty string)
+- designStyle: string — design approach
+- textPlacement: string — where text goes relative to product
+- adPrompt: string — detailed image generation prompt (200-300 words) for a ${width}x${height} ${format} ad. Must describe: product placement for this specific aspect ratio, background design, lighting, color palette, typography with exact text content, CTA button design, composition optimized for ${format} format. Style: professional product advertisement, commercial photography quality, 8K resolution.
 
-  1. PRODUCT PLACEMENT: Exact position, angle, scale, and presentation of the product (centered, slightly angled, floating, on a surface)
-  2. BACKGROUND DESIGN: Detailed background with gradients, abstract shapes, light effects, bokeh, or environmental elements that complement the product
-  3. LIGHTING & SHADOWS: Professional studio lighting setup with specific light sources, reflections, and shadow directions
-  4. COLOR SCHEME: Exact color palette with hex codes for background, accents, and text
-  5. TYPOGRAPHY & TEXT: CRITICAL - Include the exact headline text, subheadline, and CTA button text. Specify font style (bold sans-serif, elegant serif, modern display), size hierarchy, color, and exact placement
-  6. CTA BUTTON: Design a visually striking call-to-action button with rounded corners, gradient or solid color, shadow, and text
-  7. GRAPHIC ELEMENTS: Decorative elements like light streaks, geometric shapes, subtle patterns, badge/ribbon for offers, brand-style borders
-  8. COMPOSITION: Rule of thirds, visual flow, focal points, breathing room, and overall balance
-  9. STYLE REFERENCE: "Professional product advertisement, commercial photography quality, magazine-ready, high-end brand aesthetic"
-  10. QUALITY MARKERS: "8K resolution, ultra-sharp, professional color grading, commercial product photography"
-
-The prompt should create an image that looks like it was designed by a top advertising agency - with proper text rendering, balanced composition, eye-catching colors, and a clear visual hierarchy that guides the viewer's eye from headline → product → CTA.
-
-IMPORTANT: Return ONLY valid JSON, no markdown, no code blocks, no explanations.`
+IMPORTANT: Return ONLY valid JSON. No markdown. No code blocks. No nested objects.`
           },
           {
             role: 'user',
             content: [
-              { type: 'text', text: `Analyze this product image with deep marketing psychology and create a ${format} format (${width}x${height}) advertising creative plan that would convert at the highest possible rate. Consider the target demographics, emotional triggers, and visual psychology that would make someone stop scrolling and want to buy this product immediately.` },
+              { type: 'text', text: `Analyze this product and create a ${format} format (${width}x${height}px) ad creative plan.` },
               { type: 'image_url', image_url: { url: productImageUrl } }
             ]
           }
@@ -141,45 +129,50 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no code blocks, no explanations.
         return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       if (analysisResponse.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please try later.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw new Error('AI analysis failed');
     }
 
     const analysisData = await analysisResponse.json();
     const analysisText = analysisData.choices?.[0]?.message?.content || '';
-    console.log('AI analysis raw:', analysisText.substring(0, 500));
 
     let adPlan: any;
     try {
       const cleaned = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       adPlan = JSON.parse(cleaned);
     } catch (e) {
-      console.error('Failed to parse AI analysis:', e);
+      console.error('Failed to parse AI analysis:', e, analysisText.substring(0, 500));
       throw new Error('Failed to parse product analysis');
     }
 
-    console.log('Step 2: Generating professional ad image with Gemini Image Generation...');
+    // Sanitize: force priceTag empty, flatten any objects
+    adPlan.priceTag = '';
+    if (typeof adPlan.targetAudience === 'object') {
+      adPlan.targetAudience = Object.values(adPlan.targetAudience).filter(Boolean).join(', ');
+    }
+    if (typeof adPlan.emotionalTrigger === 'object') {
+      adPlan.emotionalTrigger = Object.values(adPlan.emotionalTrigger).filter(Boolean).join(', ');
+    }
 
-    // Step 3: Generate the ad image using Gemini image generation
-    const imageGenPrompt = `Create a professional product advertisement image in ${format} format (${width}x${height} pixels).
+    console.log(`Generating ${format} ad image (${width}x${height})...`);
+
+    // Step 2: Generate ad image
+    const imageGenPrompt = `Create a professional product advertisement image. The output MUST be exactly ${width}x${height} pixels in ${format} format.
 
 ${adPlan.adPrompt}
 
-CRITICAL REQUIREMENTS:
-- This must look like a REAL professional advertisement created by a top agency
-- Include the headline text "${adPlan.headline}" prominently displayed in bold, modern typography
-- Include the subheadline "${adPlan.subheadline}" in smaller elegant text below the headline  
-- Include a CTA button with text "${adPlan.ctaText}" - make it a visually striking button with rounded corners
-${adPlan.priceTag ? `- Display the price "${adPlan.priceTag}" in an eye-catching format` : ''}
-- The product must be the hero/focal point of the composition
-- Use ${adPlan.designStyle} design aesthetic
-- Background should feature ${adPlan.suggestedBackground}
+REQUIREMENTS:
+- Dimensions: exactly ${width}x${height} pixels, ${format} orientation
+- Display headline "${adPlan.headline}" in bold modern typography
+- Display subheadline "${adPlan.subheadline}" below headline
+- Include a CTA button with "${adPlan.ctaText}" text
+- DO NOT include any price tag or pricing text
+- Product is the focal point
+- ${adPlan.designStyle} aesthetic
+- Background: ${adPlan.suggestedBackground}
 - Lighting: ${adPlan.suggestedLighting}
-- Overall mood: ${adPlan.suggestedMood}
-- Text placement: ${adPlan.textPlacement}
-- Make it scroll-stopping, conversion-optimized, and magazine-quality
-- Professional color grading, sharp details, commercial quality`;
+- Professional commercial quality, magazine-ready`;
 
     const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -209,7 +202,7 @@ ${adPlan.priceTag ? `- Display the price "${adPlan.priceTag}" in an eye-catching
         return new Response(JSON.stringify({ error: 'Image generation rate limited. Try again shortly.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       if (imageResponse.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'AI credits exhausted.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw new Error(`Image generation failed: ${imageResponse.status}`);
     }
@@ -218,11 +211,8 @@ ${adPlan.priceTag ? `- Display the price "${adPlan.priceTag}" in an eye-catching
     const generatedBase64 = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     if (!generatedBase64) throw new Error('No image generated');
 
-    console.log('Step 3: Uploading generated ad to storage...');
-
-    // Step 4: Upload the generated image to storage
+    // Upload generated image
     let generatedImageUrl = generatedBase64;
-    
     if (generatedBase64.startsWith('data:')) {
       const imgMatches = generatedBase64.match(/^data:(.+);base64,(.+)$/);
       if (imgMatches) {
@@ -240,7 +230,7 @@ ${adPlan.priceTag ? `- Display the price "${adPlan.priceTag}" in an eye-catching
         const { error: adUploadError } = await serviceClient.storage
           .from('generated-images')
           .upload(adFileName, imgBytes, { contentType: imgMimeType, upsert: true });
-        
+
         if (!adUploadError) {
           const { data: adUrlData } = serviceClient.storage
             .from('generated-images')
@@ -250,9 +240,7 @@ ${adPlan.priceTag ? `- Display the price "${adPlan.priceTag}" in an eye-catching
       }
     }
 
-    console.log('Ad generated successfully!');
-
-    // Cleanup temp product image upload
+    // Cleanup temp upload
     if (productImageUrl.includes('product-ads/') && productImageUrl !== generatedImageUrl) {
       const path = productImageUrl.split('/generated-images/')[1];
       if (path) serviceClient.storage.from('generated-images').remove([path]).catch(() => {});

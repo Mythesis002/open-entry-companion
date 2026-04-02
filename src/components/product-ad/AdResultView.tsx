@@ -1,10 +1,8 @@
-import { Download, RotateCcw, ImageIcon, Palette, Type, Target } from 'lucide-react';
+import { Download, RotateCcw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { AdPlan } from './types';
 
-// Safely convert any value to a renderable string
 function toStr(val: unknown): string {
   if (val == null) return '';
   if (typeof val === 'string') return val;
@@ -29,86 +27,49 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `product-ad-${Date.now()}.jpg`;
+      a.download = `product-ad-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
+      toast({ title: 'Downloaded!', description: 'Your ad image has been saved.' });
     } catch {
       toast({ title: 'Download failed', variant: 'destructive' });
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold font-display">Your Product Ad is Ready! ✨</h2>
-        <p className="text-muted-foreground">AI analyzed your product and created a professional ad image.</p>
+    <div className="w-full max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="text-center space-y-1">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-2">
+          <Sparkles className="w-3.5 h-3.5" />
+          Ad Ready
+        </div>
+        <h2 className="text-2xl font-bold font-display">{toStr(adPlan.headline)}</h2>
+        <p className="text-sm text-muted-foreground">{toStr(adPlan.subheadline)}</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Generated Ad</h3>
-          <div className="rounded-2xl overflow-hidden border border-border shadow-lg">
-            <img src={generatedAdUrl} alt="Generated ad" className="w-full object-contain" />
-          </div>
-          <div className="flex gap-3">
-            <Button onClick={handleDownload} className="flex-1 gap-2">
-              <Download className="w-4 h-4" /> Download
-            </Button>
-            <Button onClick={onReset} variant="outline" className="gap-2">
-              <RotateCcw className="w-4 h-4" /> New Ad
-            </Button>
-          </div>
-        </div>
+      {/* Ad Image — hero */}
+      <div className="rounded-2xl overflow-hidden border border-border shadow-xl bg-muted/10">
+        <img src={generatedAdUrl} alt="Generated product ad" className="w-full object-contain" />
+      </div>
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">AI Creative Plan</h3>
-          <div className="space-y-3">
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <ImageIcon className="w-4 h-4 text-primary" /> Product
-              </div>
-              <p className="text-sm text-muted-foreground">{toStr(adPlan.productName)} • {toStr(adPlan.productCategory)}</p>
-              {adPlan.targetAudience && (
-                <p className="text-xs text-muted-foreground">🎯 {toStr(adPlan.targetAudience)}</p>
-              )}
-              {adPlan.emotionalTrigger && (
-                <p className="text-xs text-muted-foreground">💡 Trigger: {toStr(adPlan.emotionalTrigger)}</p>
-              )}
-            </Card>
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Palette className="w-4 h-4 text-primary" /> Style
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {adPlan.colors?.map((c, i) => (
-                  <span key={i} className="px-2 py-1 rounded-full bg-muted text-xs">{c}</span>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">{toStr(adPlan.suggestedBackground)} • {toStr(adPlan.suggestedLighting)} • {toStr(adPlan.suggestedMood)}</p>
-              {adPlan.designStyle && (
-                <p className="text-xs font-medium text-muted-foreground">Design: {adPlan.designStyle}</p>
-              )}
-            </Card>
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Type className="w-4 h-4 text-primary" /> Copy
-              </div>
-              <p className="font-bold text-foreground">{adPlan.headline}</p>
-              <p className="text-sm text-muted-foreground">{adPlan.subheadline}</p>
-              {adPlan.priceTag && (
-                <span className="inline-block px-3 py-1 rounded-lg bg-accent text-accent-foreground text-sm font-bold">{adPlan.priceTag}</span>
-              )}
-            </Card>
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Target className="w-4 h-4 text-primary" /> Call to Action
-              </div>
-              <span className="inline-block px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                {adPlan.ctaText}
-              </span>
-            </Card>
-          </div>
-        </div>
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button onClick={handleDownload} size="lg" className="flex-1 gap-2 h-12 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground border-0 hover:opacity-90">
+          <Download className="w-4 h-4" /> Download Ad
+        </Button>
+        <Button onClick={onReset} variant="outline" size="lg" className="gap-2 h-12 rounded-xl">
+          <RotateCcw className="w-4 h-4" /> Create Another
+        </Button>
+      </div>
+
+      {/* Minimal info strip */}
+      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
+        <span>{toStr(adPlan.productName)}</span>
+        <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+        <span>{toStr(adPlan.designStyle)}</span>
+        <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{toStr(adPlan.ctaText)}</span>
       </div>
     </div>
   );
