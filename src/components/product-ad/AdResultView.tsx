@@ -4,6 +4,15 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { AdPlan } from './types';
 
+// Safely convert any value to a renderable string
+function toStr(val: unknown): string {
+  if (val == null) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (typeof val === 'object') return Object.values(val as Record<string, unknown>).filter(Boolean).map(toStr).join(', ');
+  return String(val);
+}
+
 interface AdResultViewProps {
   adPlan: AdPlan;
   generatedAdUrl: string;
