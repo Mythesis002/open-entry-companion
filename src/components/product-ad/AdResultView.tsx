@@ -4,6 +4,15 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { AdPlan } from './types';
 
+// Safely convert any value to a renderable string
+function toStr(val: unknown): string {
+  if (val == null) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (typeof val === 'object') return Object.values(val as Record<string, unknown>).filter(Boolean).map(toStr).join(', ');
+  return String(val);
+}
+
 interface AdResultViewProps {
   adPlan: AdPlan;
   generatedAdUrl: string;
@@ -58,12 +67,12 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
               <div className="flex items-center gap-2 text-sm font-medium">
                 <ImageIcon className="w-4 h-4 text-primary" /> Product
               </div>
-              <p className="text-sm text-muted-foreground">{adPlan.productName} • {adPlan.productCategory}</p>
+              <p className="text-sm text-muted-foreground">{toStr(adPlan.productName)} • {toStr(adPlan.productCategory)}</p>
               {adPlan.targetAudience && (
-                <p className="text-xs text-muted-foreground">🎯 {adPlan.targetAudience}</p>
+                <p className="text-xs text-muted-foreground">🎯 {toStr(adPlan.targetAudience)}</p>
               )}
               {adPlan.emotionalTrigger && (
-                <p className="text-xs text-muted-foreground">💡 Trigger: {adPlan.emotionalTrigger}</p>
+                <p className="text-xs text-muted-foreground">💡 Trigger: {toStr(adPlan.emotionalTrigger)}</p>
               )}
             </Card>
             <Card className="p-4 space-y-2">
@@ -75,7 +84,7 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
                   <span key={i} className="px-2 py-1 rounded-full bg-muted text-xs">{c}</span>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">{adPlan.suggestedBackground} • {adPlan.suggestedLighting} • {adPlan.suggestedMood}</p>
+              <p className="text-xs text-muted-foreground">{toStr(adPlan.suggestedBackground)} • {toStr(adPlan.suggestedLighting)} • {toStr(adPlan.suggestedMood)}</p>
               {adPlan.designStyle && (
                 <p className="text-xs font-medium text-muted-foreground">Design: {adPlan.designStyle}</p>
               )}
