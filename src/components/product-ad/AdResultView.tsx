@@ -67,12 +67,12 @@ export function AdResultView({ adPlan, generatedAdUrl, onReset }: AdResultViewPr
               <div className="flex items-center gap-2 text-sm font-medium">
                 <ImageIcon className="w-4 h-4 text-primary" /> Product
               </div>
-              <p className="text-sm text-muted-foreground">{adPlan.productName} • {adPlan.productCategory}</p>
+              <p className="text-sm text-muted-foreground">{toStr(adPlan.productName)} • {toStr(adPlan.productCategory)}</p>
               {adPlan.targetAudience && (
-                <p className="text-xs text-muted-foreground">🎯 {adPlan.targetAudience}</p>
+                <p className="text-xs text-muted-foreground">🎯 {toStr(adPlan.targetAudience)}</p>
               )}
               {adPlan.emotionalTrigger && (
-                <p className="text-xs text-muted-foreground">💡 Trigger: {adPlan.emotionalTrigger}</p>
+                <p className="text-xs text-muted-foreground">💡 Trigger: {toStr(adPlan.emotionalTrigger)}</p>
               )}
             </Card>
             <Card className="p-4 space-y-2">
