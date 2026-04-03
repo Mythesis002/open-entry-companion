@@ -94,7 +94,9 @@ export function GenerationProgress({ currentStep, productImage, adFormat = 'squa
           )}
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/70 backdrop-blur-md border border-border/50 shadow-md">
             <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-            <span className="text-sm font-medium text-foreground">Creating your ad…</span>
+            <span className="text-sm font-medium text-foreground transition-all duration-500">
+              {GENERATION_STEPS[currentIndex]?.description || 'Creating your ad…'}
+            </span>
           </div>
         </div>
       </div>
