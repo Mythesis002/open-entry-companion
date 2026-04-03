@@ -101,7 +101,7 @@ export function ProductAdGenerator() {
   };
 
   if (stage === 'generating') {
-    return <GenerationProgress currentStep={currentStep} productImage={productImage} />;
+    return <GenerationProgress currentStep={currentStep} productImage={productImage} adFormat={adFormat} />;
   }
 
   if (stage === 'result' && adPlan && generatedAdUrl) {
