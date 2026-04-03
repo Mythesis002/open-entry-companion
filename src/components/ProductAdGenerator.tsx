@@ -53,7 +53,7 @@ export function ProductAdGenerator() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
-      setCurrentStep('analyzing');
+      setCurrentStep('generating');
 
       const response = await supabase.functions.invoke('generate-product-ad', {
         body: {
@@ -68,17 +68,10 @@ export function ProductAdGenerator() {
       if (response.error) throw new Error(response.error.message || 'Generation failed');
 
       const { adPlan: plan, generatedImageUrl } = response.data;
-
-      if (plan) {
-        setCurrentStep('planning');
-        setAdPlan(plan);
-        await new Promise((r) => setTimeout(r, 800));
-        setCurrentStep('generating');
-        await new Promise((r) => setTimeout(r, 400));
-      }
+      if (plan) setAdPlan(plan);
 
       setCurrentStep('finalizing');
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 400));
 
       setGeneratedAdUrl(generatedImageUrl);
       setStage('result');

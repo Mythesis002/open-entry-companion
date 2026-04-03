@@ -49,162 +49,51 @@ serve(async (req) => {
       ? await uploadBase64(serviceClient, productImage, `product-ads/${userId}`)
       : productImage;
 
-    console.log(`Phase 1: Deep product analysis for ${format} (${width}x${height})...`);
+    console.log(`Generating ${format} graphical ad (${width}x${height}) — single-phase...`);
 
-    // ── Phase 1: Deep Product Analysis & Ad Strategy ──
-    const analysisPrompt = `You are an elite creative director at a top-tier advertising agency (Ogilvy, Wieden+Kennedy level). You have 30+ years creating award-winning product advertisements for global brands.
+    // ── Single Phase: Direct Graphical Ad Generation ──
+    const imageGenPrompt = `You are an elite graphic designer creating a PROFESSIONAL PRODUCT ADVERTISEMENT.
 
-Analyze this product image with extreme attention to detail and create a COMPLETE advertising creative blueprint.
+Look at this product image carefully. Study its colors, shape, packaging, and category.
+Then create a stunning GRAPHICAL advertisement image.
 
-## YOUR ANALYSIS PROCESS
+## CRITICAL RULES — READ FIRST
+- DO NOT use any brand name, logo text, or company name. Leave brand areas BLANK or use generic text like "PREMIUM QUALITY" or "NEW ARRIVAL".
+- DO NOT invent any price, dollar sign, or numerical pricing.
+- DO NOT create photorealistic scenes. Create GRAPHIC DESIGN art with illustrated/vector-style backgrounds.
+- The output MUST be exactly ${width}x${height} pixels in ${format} format.
 
-### Phase 1: Product Intelligence
-- Identify the exact product, brand (if visible), category, and sub-category
-- Extract every visible detail: colors, textures, materials, shape, packaging design
-- Determine the product's market positioning (mass market, premium, luxury, artisanal)
+## BACKGROUND STYLE (Graphical, NOT photorealistic)
+Create a visually striking GRAPHIC background using:
+- Bold geometric shapes, gradients, and abstract patterns
+- Color blocks, diagonal stripes, radial bursts, or wave patterns
+- Complementary colors extracted from the product itself
+- Think: modern poster design, not photography
+- The background should feel dynamic, energetic, and eye-catching
+- Use 2-3 dominant colors that complement the product
 
-### Phase 2: Strategic Foundation  
-- Define the Core Selling Proposition (CSP) — the ONE key benefit
-- Identify the target audience with specificity
-- Determine the primary emotional trigger (aspiration, nostalgia, desire, trust, excitement)
-- Choose the advertising approach: lifestyle, product-hero, ingredient-showcase, or emotional
+## PRODUCT PLACEMENT
+- Place the product as the HERO using the Rule of Thirds
+- Product should occupy 40-60% of the frame and be in sharp focus
+- Add a subtle glow, shadow, or halo effect around the product
+- The product itself should look clean and crisp against the graphic background
 
-### Phase 3: Scene Design (Environment & Lighting)
-Based on product category, design the PERFECT environment:
+## TYPOGRAPHY (must be clearly legible)
+- HEADLINE: A short, punchy tagline (3-5 words) that describes the product benefit. Examples: "PURE REFRESHMENT", "ELEVATE YOUR STYLE", "TASTE THE DIFFERENCE". Use LARGE, BOLD text.
+- SUBTEXT: One supporting line (5-8 words). Smaller font below the headline.
+- CTA: A call-to-action like "SHOP NOW", "ORDER TODAY", "TRY IT NOW" — styled as a button or badge.
+- Use clean, modern sans-serif fonts. All text must be PERFECTLY READABLE.
+- Text placement: upper third or side, NEVER covering the product.
+- NO brand names. NO made-up company names. Only generic benefit-focused copy.
 
-**For Food & Beverage:** Bright natural settings — outdoor patios, fresh water surfaces, lush gardens. Use deconstructive props (show ingredients: fruit slices, herbs, ice). Natural sunlight with crisp highlights.
+## VISUAL POLISH
+- Clean graphic design aesthetic — think Adobe Illustrator / Canva Pro level
+- Bold color contrasts that make the product pop
+- Subtle decorative elements: dots, lines, circles, sparkles
+- Professional typography hierarchy: headline > subtext > CTA
+- The final result should look like a professional social media ad created by a graphic designer
 
-**For Beauty & Cosmetics:** Premium studio with dark luxurious backgrounds (brushed metal, deep gradients). Dramatic focused lighting with edge highlights, golden halos, starburst glints, bokeh particles. Shimmering abstract light trails.
-
-**For Technology:** Clean, minimalist environments with gradient backgrounds. Precise directional lighting showing product details and reflections.
-
-**For Fashion & Lifestyle:** Aspirational settings matching the brand identity. Environmental storytelling with contextual props.
-
-### Phase 4: Composition Rules
-- Use Rule of Thirds for product placement — NEVER dead center
-- Create leading lines that guide the eye to the product
-- Add depth with foreground elements (slightly blurred) and background elements
-- For pairs/sets: use elegant symmetry
-- Product MUST be the dominant focal point, occupying 40-60% of the frame
-- Include deconstructive props that showcase ingredients or key features
-
-### Phase 5: Typography & Branding
-- Brand name: LARGEST text element, prominent but not overpowering
-- Headline/Hook: Short, punchy (3-6 words max), emotionally compelling
-- Subheadline: Supporting message (5-10 words)
-- CTA: Clear action phrase
-- Font style must match product category:
-  - Natural/Rustic: Classic serif or elegant script
-  - Premium/Luxury: Clean, all-caps serif with generous letter-spacing
-  - Modern/Tech: Bold geometric sans-serif
-  - Fun/Casual: Rounded, friendly typefaces
-
-### Phase 6: Visual Polish
-- Depth of field: Sharp product, softly blurred fore/background
-- Subtle glow/halo around product for premium feel
-- Color harmony: All colors must complement each other
-- Professional color grading matching the mood
-
-CRITICAL RULES:
-- DO NOT invent any price. Set priceTag to "" always.
-- The ad dimensions are EXACTLY ${width}x${height} pixels (${format} format).
-- All fields MUST be simple strings or arrays of strings. NO nested objects.
-- targetAudience and emotionalTrigger must be simple strings.
-
-Return a JSON object with these EXACT fields:
-{
-  "productName": "string — detected product name/type",
-  "productCategory": "string — e.g. Food & Beverage, Beauty, Technology, Fashion",
-  "targetAudience": "string — specific audience description",
-  "emotionalTrigger": "string — primary emotion to leverage",
-  "colors": ["3-5 dominant hex colors from the product"],
-  "brandColors": ["2-3 complementary hex colors for the ad palette"],
-  "suggestedBackground": "string — detailed background/environment description (50+ words)",
-  "suggestedLighting": "string — detailed lighting setup description (40+ words)",
-  "suggestedMood": "string — mood and atmosphere",
-  "headline": "string — powerful hook (3-6 words)",
-  "subheadline": "string — supporting text (5-10 words)",
-  "ctaText": "string — call to action (2-4 words)",
-  "priceTag": "",
-  "designStyle": "string — overall design approach",
-  "textPlacement": "string — where text goes relative to product",
-  "fontStyle": "string — typography description (serif/sans-serif/script, weight, spacing)",
-  "compositionNotes": "string — Rule of Thirds placement, prop arrangement, depth layers",
-  "visualEffects": "string — glow, bokeh, depth of field, color grading notes",
-  "propDescription": "string — contextual and deconstructive props to include",
-  "adPrompt": "string — EXTREMELY detailed image generation prompt (300-500 words) for a ${width}x${height} ${format} ad. Must describe EVERY visual element: exact product placement using Rule of Thirds, complete background environment with specific details, lighting setup with highlight/shadow placement, all typography with exact text content and font styling, foreground/background prop placement, depth of field effects, color grading, visual effects (glow/bokeh/particles), CTA button or text design. This must read like a master-class art direction brief. Style: award-winning product advertisement, commercial photography, 8K, magazine-cover quality."
-}
-
-Return ONLY valid JSON. No markdown. No code blocks.`;
-
-    const analysisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: analysisPrompt },
-          { role: 'user', content: [
-            { type: 'text', text: `Analyze this product and create a ${format} format (${width}x${height}px) advertising creative blueprint. Study every detail of this product — its colors, textures, packaging, brand elements — and design a professional ad that would win awards.` },
-            { type: 'image_url', image_url: { url: productImageUrl } }
-          ]}
-        ],
-      }),
-    });
-
-    if (!analysisResponse.ok) {
-      const status = analysisResponse.status;
-      if (status === 429) return errResponse('Rate limit exceeded, please try again later.', 429);
-      if (status === 402) return errResponse('AI credits exhausted. Please try later.', 402);
-      throw new Error('AI analysis failed');
-    }
-
-    const analysisText = (await analysisResponse.json()).choices?.[0]?.message?.content || '';
-    let adPlan: any;
-    try {
-      adPlan = JSON.parse(analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-    } catch {
-      console.error('Parse error:', analysisText.substring(0, 500));
-      throw new Error('Failed to parse product analysis');
-    }
-
-    // Sanitize all fields
-    adPlan.priceTag = '';
-    for (const key of ['targetAudience', 'emotionalTrigger', 'suggestedMood', 'designStyle', 'textPlacement', 'fontStyle', 'compositionNotes', 'visualEffects', 'propDescription']) {
-      if (typeof adPlan[key] === 'object' && adPlan[key] !== null) {
-        adPlan[key] = Object.values(adPlan[key]).filter(Boolean).join(', ');
-      }
-    }
-
-    console.log(`Phase 2: Generating ${format} ad image (${width}x${height})...`);
-
-    // ── Phase 2: Generate Ad Image ──
-    const imageGenPrompt = `Create an AWARD-WINNING professional product advertisement image. Output MUST be exactly ${width}x${height} pixels in ${format} orientation.
-
-## PRODUCT & SCENE
-${adPlan.adPrompt}
-
-## MANDATORY COMPOSITION RULES
-1. PRODUCT PLACEMENT: The product is the HERO — place it using the Rule of Thirds, occupying 40-60% of the frame. It must be in RAZOR-SHARP focus.
-2. BACKGROUND: ${adPlan.suggestedBackground}
-3. LIGHTING: ${adPlan.suggestedLighting}
-4. PROPS: ${adPlan.propDescription || 'Contextual props that enhance the product story'}
-5. DEPTH OF FIELD: Sharp product, softly blurred foreground props and background for cinematic depth.
-
-## MANDATORY TYPOGRAPHY (must be pixel-perfect and legible)
-- HEADLINE: "${adPlan.headline}" — Large, bold, ${adPlan.fontStyle || 'modern premium'} typography. Must be CLEARLY READABLE.
-- SUBHEADLINE: "${adPlan.subheadline}" — Smaller supporting text below or near the headline.
-- CTA: "${adPlan.ctaText}" — Styled as a button, badge, or bold text element. Must stand out.
-- Text placement: ${adPlan.textPlacement || 'Upper or side area, never obscuring the product'}
-- DO NOT include ANY price, dollar signs, or numerical pricing.
-
-## VISUAL POLISH (non-negotiable)
-- Subtle glow or halo effect around the product for a premium aura
-- Color harmony: use palette ${(adPlan.brandColors || adPlan.colors || []).join(', ')}
-- Professional color grading matching ${adPlan.suggestedMood || 'premium'} mood
-- ${adPlan.visualEffects || 'Subtle bokeh, light particles, and atmospheric depth'}
-- Magazine-cover quality, 8K resolution, award-winning commercial photography
-- The final image must look like it was created by a team of professional graphic designers and photographers`;
+Create this ad now. Make it bold, clean, and visually stunning.`;
 
     const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -221,12 +110,14 @@ ${adPlan.adPrompt}
 
     if (!imageResponse.ok) {
       const status = imageResponse.status;
-      if (status === 429) return errResponse('Image generation rate limited. Try again shortly.', 429);
-      if (status === 402) return errResponse('AI credits exhausted.', 402);
+      if (status === 429) return errResponse('Rate limit exceeded, please try again later.', 429);
+      if (status === 402) return errResponse('AI credits exhausted. Please try later.', 402);
       throw new Error(`Image generation failed: ${status}`);
     }
 
-    const generatedBase64 = (await imageResponse.json()).choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const responseData = await imageResponse.json();
+    const generatedBase64 = responseData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const aiText = responseData.choices?.[0]?.message?.content || '';
     if (!generatedBase64) throw new Error('No image generated');
 
     // Upload generated image
@@ -242,6 +133,21 @@ ${adPlan.adPrompt}
       const path = productImageUrl.split('/generated-images/')[1];
       if (path) serviceClient.storage.from('generated-images').remove([path]).catch(() => {});
     }
+
+    // Return a minimal adPlan for the result view
+    const adPlan = {
+      productName: 'Product Ad',
+      productCategory: '',
+      headline: '',
+      subheadline: '',
+      ctaText: '',
+      suggestedBackground: '',
+      suggestedLighting: '',
+      suggestedMood: '',
+      designStyle: 'Graphical',
+      colors: [],
+      adPrompt: '',
+    };
 
     return new Response(
       JSON.stringify({ adPlan, generatedImageUrl }),

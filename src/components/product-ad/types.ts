@@ -34,7 +34,7 @@ export const AD_FORMATS: AdFormatOption[] = [
   { id: 'landscape', label: 'Landscape', dimensions: '1200×628', width: 1200, height: 628, aspectClass: 'aspect-[1200/628]' },
 ];
 
-export type GenerationStep = 'uploading' | 'analyzing' | 'planning' | 'generating' | 'finalizing';
+export type GenerationStep = 'uploading' | 'generating' | 'finalizing';
 
 export interface StepInfo {
   id: GenerationStep;
@@ -43,9 +43,7 @@ export interface StepInfo {
 }
 
 export const GENERATION_STEPS: StepInfo[] = [
-  { id: 'uploading', label: 'Uploading Image', description: 'Preparing your product image...' },
-  { id: 'analyzing', label: 'Analyzing Product', description: 'AI is studying your product details, colors, and features...' },
-  { id: 'planning', label: 'Planning Ad Creative', description: 'Designing the perfect ad layout, copy, and call to action...' },
-  { id: 'generating', label: 'Generating Ad Image', description: 'Creating your stunning product ad with AI...' },
-  { id: 'finalizing', label: 'Finalizing', description: 'Polishing and preparing your ad for download...' },
+  { id: 'uploading', label: 'Preparing', description: 'Preparing your product image...' },
+  { id: 'generating', label: 'Creating Ad', description: 'Designing your graphical product ad...' },
+  { id: 'finalizing', label: 'Finalizing', description: 'Polishing and preparing your ad...' },
 ];
