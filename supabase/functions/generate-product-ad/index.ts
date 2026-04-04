@@ -48,11 +48,35 @@ serve(async (req) => {
       productImageUrl = serviceClient.storage.from('generated-images').getPublicUrl(fileName).data.publicUrl;
     }
 
-    console.log(`Generating ${format} product ad (${width}x${height}) using fal.ai seedream...`);
+    console.log(`Generating ${format} product ad (${width}x${height}) using fal.ai nano-banana-2...`);
 
-    const adPrompt = `Professional product advertisement image. Place this product as the hero element on a stunning graphical background with bold geometric shapes, vibrant gradients, and abstract patterns. The background should be colorful and eye-catching with complementary colors. Add large bold marketing text like "PREMIUM QUALITY" or "NEW ARRIVAL" and a call-to-action button saying "SHOP NOW". Clean modern graphic design style, no brand names, no logos, no pricing. The product should be prominent and sharp against the dynamic background. Professional social media ad layout.`;
+    const adPrompt = `Create a stunning, high-end product advertisement poster. The product from the reference image should be the HERO — placed prominently in the center with a dramatic, larger-than-life presence.
 
-    const falResponse = await fetch('https://fal.run/fal-ai/bytedance/seedream/v4/edit', {
+BACKGROUND & ENVIRONMENT:
+- Design a rich, immersive GRAPHICAL WORLD around the product — NOT a plain studio background
+- Use a bold, saturated solid color gradient background (vivid blue, golden yellow, deep red, or emerald green) that complements the product
+- Surround the product with thematic illustrated elements that tell a story about the product's category:
+  - For food/drinks: floating ingredients, splashes, fruits, vegetables, steam, droplets, leaves
+  - For beauty/cosmetics: flower petals, sparkles, water ripples, silk ribbons
+  - For tech: geometric shapes, light trails, circuit patterns, holographic elements
+  - For fashion: fabric textures, abstract patterns, lifestyle elements
+- Add whimsical, playful decorative elements: clouds, butterflies, sparkle bursts, sun rays, small flowers, or abstract shapes scattered around
+
+COMPOSITION:
+- Product occupies 40-60% of the frame, positioned using Rule of Thirds
+- Create depth with foreground elements (close-up ingredients or decorations) and background elements
+- Add a subtle glow, halo, or radiance effect behind the product to make it pop
+- Include complementary items or accessories near the base of the product for context
+
+STYLE:
+- Professional advertising photography meets illustrated fantasy world
+- Colors should be rich, saturated, and harmonious — think Frito-Lay, Coca-Cola, or luxury brand campaigns
+- Lighting should be dramatic with rim lighting on the product edges
+- The overall feel should be premium, joyful, and appetizing/desirable
+
+DO NOT include any text, brand names, logos, pricing, or watermarks. Focus purely on the visual composition.`;
+
+    const falResponse = await fetch('https://fal.run/fal-ai/nano-banana-2', {
       method: 'POST',
       headers: {
         'Authorization': `Key ${FAL_KEY}`,
@@ -70,12 +94,18 @@ serve(async (req) => {
       const errorText = await falResponse.text();
       console.error('fal.ai error:', falResponse.status, errorText);
       if (falResponse.status === 429) return errResponse('Rate limit exceeded, please try again later.', 429);
-      throw new Error(`fal.ai error: ${falResponse.status}`);
+      throw new Error(`fal.ai error: ${falResponse.status} - ${errorText}`);
     }
 
     const data = await falResponse.json();
+    console.log('fal.ai response keys:', Object.keys(data));
+    
+    // nano-banana-2 returns { images: [{ url, ... }] }
     const generatedImageUrl = data.images?.[0]?.url;
-    if (!generatedImageUrl) throw new Error('No image generated');
+    if (!generatedImageUrl) {
+      console.error('No image in response:', JSON.stringify(data).substring(0, 500));
+      throw new Error('No image generated');
+    }
 
     // Cleanup temp product upload
     if (productImageUrl.includes('product-ads/')) {
