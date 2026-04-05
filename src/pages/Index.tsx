@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-import opentryLogo from '/opentry-logo.svg';
+import opentryLogo from '@/assets/opentry-logo.png';
 
 export default function Index() {
   const [showTools, setShowTools] = useState(false);
