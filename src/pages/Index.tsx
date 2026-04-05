@@ -6,7 +6,7 @@ import { ToolsSidebar } from '@/components/ecommerce/ToolsSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+
 import { useToast } from '@/hooks/use-toast';
 
 import opentryLogo from '@/assets/opentry-logo.png';
