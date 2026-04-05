@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { MessageSquare, ImagePlus, Menu, X } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
 import { ChatPanel } from '@/components/ecommerce/ChatPanel';
 import { ToolsSidebar } from '@/components/ecommerce/ToolsSidebar';
 import { useAuth } from '@/hooks/useAuth';
