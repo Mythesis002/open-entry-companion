@@ -1,14 +1,17 @@
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+export type ChatImage = { base64: string; mimeType: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ecommerce-chat`;
 
 export async function streamChat({
   messages,
+  images,
   onDelta,
   onDone,
   onError,
 }: {
   messages: ChatMessage[];
+  images?: ChatImage[];
   onDelta: (text: string) => void;
   onDone: () => void;
   onError?: (error: string) => void;
@@ -19,7 +22,7 @@ export async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, images }),
   });
 
   if (!resp.ok) {
