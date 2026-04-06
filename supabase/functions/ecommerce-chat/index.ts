@@ -18,9 +18,73 @@ const SYSTEM_PROMPT = `You are an expert E-commerce Research Assistant. You help
 
 5. **Trend Analysis**: Identify trending products, seasonal opportunities, and viral product categories.
 
+6. **Image Analysis**: When users upload product images, analyze them for quality, branding, listing optimization, and competitive positioning.
+
 Keep responses actionable, data-driven, and concise. Use bullet points, tables, and structured formatting. When analyzing a store or product, be specific with observations and recommendations.
 
+When you receive scraped website content, analyze it thoroughly — examine pricing, product range, UX patterns, SEO elements, and competitive positioning.
+
 If the user shares a URL, analyze what you can infer about the store/product from the URL structure and name, and provide strategic insights.`;
+
+// Simple URL detector
+function extractUrls(text: string): string[] {
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/g;
+  return text.match(urlRegex) || [];
+}
+
+// Scrape a URL and return its text content
+async function scrapeUrl(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const resp = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OpentryBot/1.0)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) return `[Failed to fetch ${url}: HTTP ${resp.status}]`;
+
+    const html = await resp.text();
+
+    // Basic HTML to text: strip tags, decode entities, collapse whitespace
+    let text = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, "")
+      .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, "")
+      .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Extract title
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].trim() : "";
+
+    // Extract meta description
+    const metaMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i);
+    const metaDesc = metaMatch ? metaMatch[1].trim() : "";
+
+    // Truncate to ~8000 chars to fit in context
+    if (text.length > 8000) text = text.slice(0, 8000) + "...";
+
+    return `[Scraped content from ${url}]\nTitle: ${title}\nMeta Description: ${metaDesc}\n\nPage Content:\n${text}`;
+  } catch (e) {
+    return `[Failed to scrape ${url}: ${e instanceof Error ? e.message : "Unknown error"}]`;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -28,7 +92,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, images } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(
@@ -42,15 +106,50 @@ serve(async (req) => {
       throw new Error("GEMINI_API_KEY is not configured");
     }
 
-    // Convert OpenAI-style messages to Gemini format
+    // Check the latest user message for URLs and scrape them
+    const lastUserMsg = messages[messages.length - 1];
+    let scrapedContent = "";
+    if (lastUserMsg?.role === "user") {
+      const urls = extractUrls(lastUserMsg.content);
+      if (urls.length > 0) {
+        const scrapeResults = await Promise.all(urls.slice(0, 3).map(scrapeUrl));
+        scrapedContent = scrapeResults.join("\n\n---\n\n");
+      }
+    }
+
+    // Build Gemini contents
     const geminiContents = [];
-    
-    // Add system instruction as first user message context
+
     for (const msg of messages) {
+      const parts: any[] = [];
+
+      if (msg.role === "user" && msg === lastUserMsg && scrapedContent) {
+        parts.push({ text: msg.content + "\n\n--- SCRAPED WEBSITE DATA ---\n\n" + scrapedContent });
+      } else {
+        parts.push({ text: msg.content });
+      }
+
       geminiContents.push({
         role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
+        parts,
       });
+    }
+
+    // If images are provided, add them to the last user message
+    if (images && Array.isArray(images) && images.length > 0) {
+      const lastContent = geminiContents[geminiContents.length - 1];
+      if (lastContent?.role === "user") {
+        for (const img of images) {
+          if (img.base64 && img.mimeType) {
+            lastContent.parts.push({
+              inlineData: {
+                mimeType: img.mimeType,
+                data: img.base64,
+              },
+            });
+          }
+        }
+      }
     }
 
     const response = await fetch(
@@ -74,7 +173,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
@@ -87,7 +186,7 @@ serve(async (req) => {
       );
     }
 
-    // Transform Gemini SSE stream to OpenAI-compatible SSE format
+    // Transform Gemini SSE stream → OpenAI-compatible SSE with word-by-word chunking
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
@@ -117,11 +216,16 @@ serve(async (req) => {
               const parsed = JSON.parse(jsonStr);
               const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) {
-                // Emit OpenAI-compatible SSE
-                const chunk = JSON.stringify({
-                  choices: [{ delta: { content: text } }],
-                });
-                await writer.write(encoder.encode(`data: ${chunk}\n\n`));
+                // Split into words and emit word-by-word for smoother streaming
+                const words = text.split(/(\s+)/);
+                for (const word of words) {
+                  if (word) {
+                    const chunk = JSON.stringify({
+                      choices: [{ delta: { content: word } }],
+                    });
+                    await writer.write(encoder.encode(`data: ${chunk}\n\n`));
+                  }
+                }
               }
             } catch {
               // skip unparseable
